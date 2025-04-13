@@ -27,8 +27,8 @@
             
             <nav class="hidden md:flex">
                 <ul class="flex space-x-8">
-                    <li><a href="#" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Home</a></li>
-                    <li><a href="#" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Rent</a></li>
+                    <li><a href="dashboard.php" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Home</a></li>
+                    <li><a href="rent.php" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Rent</a></li>
                     <li><a href="#" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Notifications</a></li>
                     <li><a href="details.php" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">About Us</a></li>
                 </ul>
