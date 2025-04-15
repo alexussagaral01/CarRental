@@ -181,8 +181,8 @@
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-500">Per hour</span>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    Rent Now
+                                <button onclick="showModal('mercedes')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
+                                    View
                                 </button>
                             </div>
                         </div>
@@ -220,8 +220,8 @@
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-500">Per hour</span>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    Rent Now
+                                <button onclick="showModal('hyundai')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
+                                    View
                                 </button>
                             </div>
                         </div>
@@ -259,8 +259,8 @@
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-500">Per hour</span>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    Rent Now
+                                <button onclick="showModal('kia')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
+                                    View
                                 </button>
                             </div>
                         </div>
@@ -298,14 +298,58 @@
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-500">Per hour</span>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    Rent Now
+                                <button onclick="showModal('mitsubishi')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
+                                    View
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <!-- End of Static Vehicle Cards -->
+
+                <!-- Vehicle Modal -->
+                <div id="vehicleModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+                    <div class="bg-white rounded-xl max-w-xl w-full mx-4 overflow-hidden"> <!-- Changed from max-w-2xl to max-w-xl -->
+                        <!-- Modal Header with close button -->
+                        <div class="flex justify-between items-center p-3 border-b"> <!-- Changed padding from p-4 to p-3 -->
+                            <h3 class="text-lg font-bold text-gray-900" id="modalTitle"></h3> <!-- Changed from text-xl to text-lg -->
+                            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Changed from w-6 h-6 to w-5 h-5 -->
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- Modal Content -->
+                        <div class="p-4"> <!-- Changed padding from p-6 to p-4 -->
+                            <img id="modalImage" class="w-full h-48 object-cover rounded-lg mb-4" src="" alt="Vehicle"> <!-- Changed height from h-64 to h-48 -->
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-sm text-gray-600">Year Model</p>
+                                    <p id="modalYear" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Color</p>
+                                    <p id="modalColor" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">License Plate</p>
+                                    <p id="modalPlate" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Price</p>
+                                    <p id="modalPrice" class="font-semibold text-blue-600"></p>
+                                </div>
+                            </div>
+                            <div class="mb-6">
+                                <p class="text-sm text-gray-600">Description</p>
+                                <p id="modalDescription" class="text-gray-700"></p>
+                            </div>
+                            <button onclick="bookNow()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                                BOOK NOW
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Quick Filters -->
                 <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
@@ -339,6 +383,82 @@
             // Smooth scroll to vehicles
             vehicleCards.scrollIntoView({ behavior: 'smooth' });
         }
+
+        // Vehicle data
+        const vehicles = {
+            'mercedes': {
+                title: 'Mercedes Benz C-Class',
+                image: 'img/mercedes.jpg',
+                year: '2023',
+                color: 'Silver',
+                plate: 'ABC 123',
+                price: '₱550 per hour',
+                description: 'Luxury sedan featuring premium leather interior, advanced safety features, and superior comfort for an exceptional driving experience.'
+            },
+            'hyundai': {
+                title: 'Hyundai Sonata',
+                image: 'img/hyundai.jpg',
+                year: '2022',
+                color: 'White',
+                plate: 'XYZ 789',
+                price: '₱600 per hour',
+                description: 'Modern comfort sedan with spacious interior, fuel efficiency, and smart technology features.'
+            },
+            'kia': {
+                title: 'Kia Forte',
+                image: 'img/kia.jpg',
+                year: '2022',
+                color: 'Red',
+                plate: 'DEF 456',
+                price: '₱450 per hour',
+                description: 'Economic and reliable sedan with great fuel efficiency and modern amenities.'
+            },
+            'mitsubishi': {
+                title: 'Mitsubishi Montero',
+                image: 'img/mitsubishi.jpg',
+                year: '2023',
+                color: 'Black',
+                plate: 'GHI 789',
+                price: '₱500 per hour',
+                description: 'Powerful SUV with excellent off-road capabilities and comfortable seating for 7 passengers.'
+            }
+        };
+
+        function showModal(vehicle) {
+            const modal = document.getElementById('vehicleModal');
+            const data = vehicles[vehicle];
+
+            // Update modal content
+            document.getElementById('modalTitle').textContent = data.title;
+            document.getElementById('modalImage').src = data.image;
+            document.getElementById('modalYear').textContent = data.year;
+            document.getElementById('modalColor').textContent = data.color;
+            document.getElementById('modalPlate').textContent = data.plate;
+            document.getElementById('modalPrice').textContent = data.price;
+            document.getElementById('modalDescription').textContent = data.description;
+
+            // Show modal
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('vehicleModal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+
+        function bookNow() {
+            // Redirect to customer information page
+            window.location.href = 'cust_info.php';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('vehicleModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
     </script>
     
     <!-- Footer Section -->

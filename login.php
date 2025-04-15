@@ -14,13 +14,21 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100">
     <!-- Navigation Bar -->
-    <header class="glass-effect fixed w-full z-50 py-4 px-6">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-xl">R</span>
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                            d="M8 17h8M8 17v-4m8 4v-4m-8 4h8m-8-4h8M4 11l2-6h12l2 6M4 11h16M4 11v6h16v-6" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M6 17h2M16 17h2" />
+                    </svg>
                 </div>
-                <span class="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">RentWheels</span>
+                <div class="flex flex-col">
+                    <h1 class="text-2xl font-bold text-gray-800">RentWheels</h1>
+                    <span class="text-xs text-blue-600 font-medium -mt-1">Premium Car Rental</span>
+                </div>
             </div>
             
             <nav class="hidden md:block">
@@ -35,7 +43,7 @@
     </header>
     
     <!-- Main Content -->
-    <div class="container mx-auto px-6 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-6 h-[calc(100vh-4rem)] flex items-center justify-center mt-1">
         <div class="glass-effect w-full max-w-6xl rounded-2xl shadow-2xl p-8 grid md:grid-cols-2 gap-12">
             <!-- Login Form -->
             <div class="space-y-8">
@@ -87,18 +95,65 @@
             
             <!-- Image Section -->
             <div class="hidden md:block relative">
-                <img 
-                    src="https://images.unsplash.com/photo-1560031788-6516386c3f1f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=735&q=80" 
-                    alt="Luxury car" 
-                    class="w-full h-full object-cover rounded-xl"
-                >
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-xl"></div>
-                <div class="absolute bottom-0 left-0 p-6 text-white">
-                    <h2 class="text-2xl font-bold">Premium Car Rental</h2>
-                    <p class="text-sm opacity-90">Experience luxury and comfort on your journey</p>
+                <div class="carousel relative rounded-xl overflow-hidden h-full">
+                    <div class="carousel-inner transition-transform duration-500 ease-in-out h-full">
+                        <img src="img/toyota.jpg" alt="Toyota" class="w-full h-full object-cover">
+                        <img src="img/hyundai.jpg" alt="Hyundai" class="w-full h-full object-cover hidden">
+                        <img src="img/mercedes.jpg" alt="Mercedes" class="w-full h-full object-cover hidden">
+                        <img src="img/mitsubishi.jpg" alt="Mitsubishi" class="w-full h-full object-cover hidden">
+                        <img src="img/kia.jpg" alt="Kia" class="w-full h-full object-cover hidden">
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 p-6 text-white">
+                        <h2 class="text-2xl font-bold">Premium Car Rental</h2>
+                        <p class="text-sm opacity-90">Experience luxury and comfort on your journey</p>
+                    </div>
+                    <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+                        <button class="w-2 h-2 rounded-full bg-white opacity-50 carousel-dot active"></button>
+                        <button class="w-2 h-2 rounded-full bg-white opacity-50 carousel-dot"></button>
+                        <button class="w-2 h-2 rounded-full bg-white opacity-50 carousel-dot"></button>
+                        <button class="w-2 h-2 rounded-full bg-white opacity-50 carousel-dot"></button>
+                        <button class="w-2 h-2 rounded-full bg-white opacity-50 carousel-dot"></button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const carouselInner = document.querySelector('.carousel-inner');
+            const images = carouselInner.querySelectorAll('img');
+            const dots = document.querySelectorAll('.carousel-dot');
+            let currentIndex = 0;
+
+            function showImage(index) {
+                images.forEach(img => img.classList.add('hidden'));
+                dots.forEach(dot => dot.classList.remove('opacity-100'));
+                
+                images[index].classList.remove('hidden');
+                dots[index].classList.add('opacity-100');
+            }
+
+            function nextImage() {
+                currentIndex = (currentIndex + 1) % images.length;
+                showImage(currentIndex);
+            }
+
+            // Auto slide every 3 seconds
+            setInterval(nextImage, 3000);
+
+            // Initialize dots click handlers
+            dots.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    currentIndex = index;
+                    showImage(currentIndex);
+                });
+            });
+
+            // Show first image
+            showImage(0);
+        });
+    </script>
 </body>
 </html>

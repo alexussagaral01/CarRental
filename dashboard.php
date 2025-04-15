@@ -76,48 +76,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Search Form Section -->
-    <div class="container mx-auto px-4 my-12 max-w-2xl">
-        <div class="bg-white rounded-2xl shadow-lg p-8">
-            <h3 class="text-2xl font-bold text-gray-800 mb-6">Search Available Vehicles</h3>
-            <div class="space-y-6">
-                <div>
-                    <label for="vehicle" class="block text-gray-700 font-medium mb-2">Vehicle Type</label>
-                    <div class="relative">
-                        <select id="vehicle" name="vehicle" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select vehicle type</option>
-                            <option value="sedan">Sedan</option>
-                            <option value="suv">SUV</option>
-                            <option value="luxury">Luxury</option>
-                            <option value="sports">Sports</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="pickup" class="block text-gray-700 font-medium mb-2">Pickup Date</label>
-                        <input type="date" id="pickup" name="pickup" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <div>
-                        <label for="return" class="block text-gray-700 font-medium mb-2">Return Date</label>
-                        <input type="date" id="return" name="return" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                </div>
-
-                <button type="button" class="w-full bg-blue-600 text-white py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors duration-300 shadow-lg">
-                    Search Available Vehicles
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Available Cars Section -->
     <div class="container mx-auto px-4 my-16">
