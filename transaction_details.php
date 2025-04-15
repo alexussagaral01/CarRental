@@ -134,11 +134,11 @@
                                     </div>
                                     <div>
                                         <p class="text-sm text-gray-500">Contact Number</p>
-                                        <p class="font-medium text-gray-800">09123456789</p>
+                                        <p class="font-medium text-gray-800">09773812852</p>
                                     </div>
                                     <div>
                                         <p class="text-sm text-gray-500">Address</p>
-                                        <p class="font-medium text-gray-800">Guadalupe Cebu City</p>
+                                        <p class="font-medium text-gray-800">Buhisan  Cebu City</p>
                                     </div>
                                 </div>
                                 <div class="space-y-3">
