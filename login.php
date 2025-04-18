@@ -30,15 +30,6 @@
                     <span class="text-xs text-blue-600 font-medium -mt-1">Premium Car Rental</span>
                 </div>
             </div>
-            
-            <nav class="hidden md:block">
-                <ul class="flex space-x-8">
-                    <li><a href="#" class="text-gray-700 hover:text-blue-600 transition-colors duration-300">Home</a></li>
-                    <li><a href="#" class="text-gray-700 hover:text-blue-600 transition-colors duration-300">Vehicle Fleet</a></li>
-                    <li><a href="#" class="text-gray-700 hover:text-blue-600 transition-colors duration-300">Services</a></li>
-                    <li><a href="#" class="text-gray-700 hover:text-blue-600 transition-colors duration-300">Contact</a></li>
-                </ul>
-            </nav>
         </div>
     </header>
     
