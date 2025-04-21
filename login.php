@@ -1,3 +1,56 @@
+<?php
+session_start();
+require_once 'connect.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    
+    // First check for default admin credentials
+    if ($username === 'admin' && $password === 'admin123') {
+        $_SESSION['admin'] = true;
+        $_SESSION['username'] = $username;
+        header("Location: admin/admin_dashboard.php");
+        exit();
+    }
+    
+    // If not admin, then check database
+    $sql = "SELECT * FROM admin WHERE USER_NAME = ? AND PASSWORD = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ss", $username, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $_SESSION['admin'] = true;
+        $_SESSION['username'] = $username;
+        header("Location: admin/admin_dashboard.php");
+        exit();
+    } else {
+        $error_message = "Invalid username or password";
+    }
+    
+    // If not admin, check staff table
+    $sql = "SELECT * FROM staff WHERE USER_NAME = ? AND PASSWORD = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ss", $username, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $staff = $result->fetch_assoc();
+        $_SESSION['staff'] = true;
+        $_SESSION['staff_id'] = $staff['STAFF_ID'];
+        $_SESSION['username'] = $username;
+        header("Location: staff/staff_dashboard.php");
+        exit();
+    } else {
+        $error_message = "Invalid username or password";
+    }
+
+    $stmt->close();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,22 +96,32 @@
                     <p class="text-gray-600">Sign in to continue your journey with us</p>
                 </div>
                 
-                <form class="space-y-6">
+                <form method="POST" action="" class="space-y-6">
+                    <?php if (isset($error_message)): ?>
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                            <span class="block sm:inline"><?php echo $error_message; ?></span>
+                        </div>
+                    <?php endif; ?>
+                    
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-gray-700">Username</label>
                         <input 
                             type="text" 
+                            name="username"
                             class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
                             placeholder="Enter your username"
+                            required
                         >
                     </div>
                     
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-gray-700">Password</label>
                         <input 
-                            type="password" 
+                            type="password"
+                            name="password" 
                             class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
                             placeholder="Enter your password"
+                            required
                         >
                     </div>
                     
