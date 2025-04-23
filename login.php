@@ -14,8 +14,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
     
-    // If not admin, then check database
-    $sql = "SELECT * FROM admin WHERE USER_NAME = ? AND PASSWORD = ?";
+    // If not default admin, check admin table using stored procedure
+    $sql = "CALL sp_get_admin_login(?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
@@ -30,8 +30,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error_message = "Invalid username or password";
     }
     
-    // If not admin, check staff table
-    $sql = "SELECT * FROM staff WHERE USER_NAME = ? AND PASSWORD = ?";
+    // Close the previous statement before the next query
+    $stmt->close();
+    // Free the result
+    $result->close();
+    // Reset the connection to allow new queries
+    $conn->next_result();
+    
+    // If not admin, check staff table using stored procedure
+    $sql = "CALL sp_get_staff_login(?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
@@ -49,6 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     $stmt->close();
+    $result->close();
 }
 ?>
 <!DOCTYPE html>
