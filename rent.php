@@ -1,3 +1,78 @@
+<?php
+// Database connection
+$conn = new mysqli('localhost', 'root', '', 'vehicle_rental');
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Handle search form submission
+if (isset($_POST['search'])) {
+    $vehicle_type = $_POST['vehicle_type'];
+    $capacity = $_POST['capacity'];
+    $transmission = $_POST['transmission'];
+    
+    $sql = "SELECT * FROM vehicle WHERE 1=1";
+    
+    if (!empty($vehicle_type)) {
+        $sql .= " AND VEHICLE_TYPE = '$vehicle_type'";
+    }
+    if (!empty($capacity)) {
+        $sql .= " AND CAPACITY = '$capacity'";
+    }
+    if (!empty($transmission)) {
+        $sql .= " AND TRANSMISSION = '$transmission'";
+    }
+    
+    $result = $conn->query($sql);
+    $vehicles = [];
+    
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $vehicles[] = $row;
+        }
+    }
+}
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
+    $customer_id = 1; // This should come from the logged-in user session
+    $driver_id = isset($_POST['driver_id']) ? $_POST['driver_id'] : null;
+    $payment_id = null; // This will be updated when payment is processed
+    $rent_driver_type = $_POST['driver_type'];
+    $pickup_location = $_POST['pickup_location'];
+    $start_date = $_POST['start_date'];
+    $return_date = $_POST['return_date'];
+    $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
+    $total_amount = 0; // This will be calculated based on vehicle selection
+
+    $stmt = $conn->prepare("CALL sp_InsertRental(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iiissssdi", 
+        $customer_id, 
+        $driver_id, 
+        $payment_id, 
+        $rent_driver_type, 
+        $pickup_location, 
+        $start_date, 
+        $return_date, 
+        $total_amount,
+        $quantity
+    );
+
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $rental_id = $row['rental_id'];
+            // Redirect to payment page or show success message
+            header("Location: payment.php?rental_id=" . $rental_id);
+            exit();
+        }
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+    $stmt->close();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,17 +174,17 @@
             </div>
             
             <!-- Rental Form -->
-            <div class="space-y-8">
+            <form method="POST" action="" class="space-y-8">
                 <!-- Location and Dates -->
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div class="md:col-span-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
                         <div class="relative">
-                            <select class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                <option>Select Location</option>
-                                <option>Cebu City Downtown</option>
-                                <option>Mactan Airport</option>
-                                <option>Mandaue City</option>
+                            <select name="pickup_location" required class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                <option value="" disabled selected>Select Location</option>
+                                <option value="Cebu City Downtown">Cebu City Downtown</option>
+                                <option value="Mactan Airport">Mactan Airport</option>
+                                <option value="Mandaue City">Mandaue City</option>
                             </select>
                             <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,238 +195,275 @@
                     </div>
 
                     <div class="md:col-span-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
                         <div class="relative">
-                            <input type="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <input type="datetime-local" 
+                                   name="start_date"
+                                   required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                   min="<?php echo date('Y-m-d\TH:i'); ?>">
                         </div>
                     </div>
 
                     <div class="md:col-span-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Return Date</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Return Date & Time</label>
                         <div class="relative">
-                            <input type="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <input type="datetime-local" 
+                                   name="return_date"
+                                   required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                   min="<?php echo date('Y-m-d\TH:i'); ?>">
                         </div>
                     </div>
                 </div>
 
                 <!-- Additional Filters -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
-                        <select class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option>All Types</option>
-                            <option>Sedan</option>
-                            <option>SUV</option>
-                            <option>Van</option>
+                        <select name="vehicle_type" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <option value="">All Types</option>
+                            <option value="SUV">SUV</option>
+                            <option value="HATCHBACK">HATCHBACK</option>
+                            <option value="SEDAN">SEDAN</option>
+                            <option value="MPV">MPV</option>
+                            <option value="VAN">VAN</option>
+                            <option value="MINIBUS">MINIBUS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
+                        <select name="capacity" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <option value="">All Capacities</option>
+                            <option value="4-5">4-5 Person</option>
+                            <option value="7-8">7-8 Person</option>
+                            <option value="10-18">10-18 Person</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Transmission</label>
-                        <select class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option>Any</option>
-                            <option>Automatic</option>
-                            <option>Manual</option>
+                        <select name="transmission" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <option value="">All Types</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
-                        <select class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option>All Prices</option>
-                            <option>₱1000 - ₱2000</option>
-                            <option>₱2000 - ₱3000</option>
-                            <option>₱3000+</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Driver Type</label>
+                        <select name="driver_type" required class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <option value="" disabled selected>Select Driver Type</option>
+                            <option value="self">Self-Drive</option>
+                            <option value="with_driver">With Driver</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Search Button -->
                 <div class="flex justify-end">
-                    <button onclick="showVehicles()" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg flex items-center">
+                    <button type="submit" name="search" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         Search Available Vehicles
                     </button>
                 </div>
+            </form>
 
-                <!-- Static Vehicle Cards -->
-                <div id="vehicleCards" class="hidden grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-                    <!-- Mercedes Card -->
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-                        <div class="relative">
-                            <img src="img/mercedes.jpg" alt="Mercedes" class="w-full h-48 object-cover">
-                            <div class="absolute top-4 right-4">
-                                <span class="bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium">Premium</span>
+            <!-- Dynamic Vehicle Cards -->
+            <?php if (isset($_POST['search'])): ?>
+            <div class="mt-8">
+                <?php if (!empty($vehicles)): ?>
+                    <!-- Add hidden input for selected vehicles -->
+                    <input type="hidden" id="selectedVehicles" name="selectedVehicles" value="">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[800px] overflow-y-auto p-4">
+                        <?php foreach ($vehicles as $vehicle): ?>
+                        <!-- Vehicle cards from database -->
+                        <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer vehicle-card"
+                             onclick="toggleVehicleSelection(this, <?php echo $vehicle['VEHICLE_ID']; ?>)"
+                             data-vehicle-id="<?php echo $vehicle['VEHICLE_ID']; ?>">
+                            <!-- Add selected indicator -->
+                            <div class="absolute top-4 right-4 z-10 hidden check-indicator">
+                                <div class="bg-blue-600 text-white p-2 rounded-full">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <!-- Existing vehicle card content -->
+                            <div class="relative h-[300px] overflow-hidden">
+                                <img src="<?php echo $vehicle['IMAGES']; ?>" 
+                                     alt="<?php echo $vehicle['VEHICLE_BRAND']; ?>" 
+                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                
+                                <!-- Overlay with status and type -->
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                                <div class="absolute top-4 left-4 flex gap-2">
+                                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                        <?php echo $vehicle['VEHICLE_TYPE']; ?>
+                                    </span>
+                                    <span class="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                        <?php echo $vehicle['STATUS']; ?>
+                                    </span>
+                                </div>
+                                
+                                <!-- Price tag -->
+                                <div class="absolute top-4 right-4">
+                                    <div class="bg-white/90 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-lg font-bold">
+                                        ₱<?php echo number_format($vehicle['AMOUNT'], 2); ?>
+                                        <span class="text-xs text-gray-500">/day</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle Details Section -->
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-900"><?php echo $vehicle['VEHICLE_BRAND']; ?></h3>
+                                        <p class="text-gray-600 mt-1"><?php echo $vehicle['MODEL']; ?></p>
+                                    </div>
+                                    <span class="inline-flex items-center justify-center bg-blue-100 text-blue-600 px-2.5 py-0.5 rounded-full text-sm font-medium">
+                                        <?php echo $vehicle['LICENSE_PLATE']; ?>
+                                    </span>
+                                </div>
+
+                                <!-- Features Grid -->
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <div class="flex items-center gap-2">
+                                        <div class="p-2 bg-blue-50 rounded-lg">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm-5 14h2m-6 0h2m-6 0h2"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-600"><?php echo $vehicle['CAPACITY']; ?> Seats</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="p-2 bg-blue-50 rounded-lg">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-600"><?php echo $vehicle['TRANSMISSION']; ?></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="p-2 bg-blue-50 rounded-lg">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-600"><?php echo $vehicle['YEAR']; ?></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="p-2 bg-blue-50 rounded-lg">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-600"><?php echo $vehicle['QUANTITY']; ?> Available</span>
+                                    </div>
+                                </div>
+
+                                <!-- Quantity Selector -->
+                                <div class="flex items-center gap-4 mb-4">
+                                    <label class="text-sm text-gray-600">Select Quantity:</label>
+                                    <div class="flex items-center">
+                                        <button type="button" 
+                                                onclick="updateQuantity(this, -1)" 
+                                                class="px-3 py-1 border border-gray-300 rounded-l-lg hover:bg-gray-100">
+                                            -
+                                        </button>
+                                        <input type="number" 
+                                               name="quantity" 
+                                               value="1" 
+                                               min="1" 
+                                               max="<?php echo $vehicle['QUANTITY']; ?>" 
+                                               class="w-16 text-center border-y border-gray-300 py-1"
+                                               readonly>
+                                        <button type="button" 
+                                                onclick="updateQuantity(this, 1)" 
+                                                class="px-3 py-1 border border-gray-300 rounded-r-lg hover:bg-gray-100">
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex justify-center">
+                                    <button onclick="viewVehicleDetails(<?php echo htmlspecialchars(json_encode($vehicle)); ?>)" 
+                                            class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        View Details
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="p-5">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900">Mercedes</h3>
-                                    <p class="text-gray-500 text-sm">Luxury Sedan</p>
-                                </div>
-                                <span class="text-xl font-bold text-blue-600">₱550</span>
-                            </div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">5 seats</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">Auto</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-500">Per hour</span>
-                                <button onclick="showModal('mercedes')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    View
-                                </button>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
 
-                    <!-- Hyundai Card -->
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-                        <div class="relative">
-                            <img src="img/hyundai.jpg" alt="Hyundai" class="w-full h-48 object-cover">
-                            <div class="absolute top-4 right-4">
-                                <span class="bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium">Popular</span>
-                            </div>
-                        </div>
-                        <div class="p-5">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900">Hyundai</h3>
-                                    <p class="text-gray-500 text-sm">Comfort Sedan</p>
-                                </div>
-                                <span class="text-xl font-bold text-blue-600">₱600</span>
-                            </div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">5 seats</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">Auto</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-500">Per hour</span>
-                                <button onclick="showModal('hyundai')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    View
-                                </button>
-                            </div>
-                        </div>
+                    <!-- Single Booking Button -->
+                    <div class="mt-6 flex justify-center">
+                        <form method="POST" action="cust_info.php" id="bookingForm" class="w-full max-w-md">
+                            <input type="hidden" name="rental_info[vehicles]" id="selected_vehicles_form">
+                            <input type="hidden" name="rental_info[pickup_location]" id="pickup_location_form">
+                            <input type="hidden" name="rental_info[start_date]" id="start_date_form">
+                            <input type="hidden" name="rental_info[return_date]" id="return_date_form">
+                            <input type="hidden" name="rental_info[driver_type]" id="driver_type_form">
+                            <button type="button" 
+                                    onclick="proceedToBooking()" 
+                                    class="w-full bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                                Proceed to Booking
+                            </button>
+                        </form>
                     </div>
-
-                    <!-- Kia Card -->
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-                        <div class="relative">
-                            <img src="img/kia.jpg" alt="Kia" class="w-full h-48 object-cover">
-                            <div class="absolute top-4 right-4">
-                                <span class="bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium">Economic</span>
-                            </div>
-                        </div>
-                        <div class="p-5">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900">Kia</h3>
-                                    <p class="text-gray-500 text-sm">Economy Sedan</p>
-                                </div>
-                                <span class="text-xl font-bold text-blue-600">₱450</span>
-                            </div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">5 seats</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">Auto</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-500">Per hour</span>
-                                <button onclick="showModal('kia')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    View
-                                </button>
-                            </div>
-                        </div>
+                <?php else: ?>
+                    <div class="text-center py-8 bg-white rounded-xl shadow">
+                        <p class="text-gray-500">No vehicles found matching your criteria.</p>
                     </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
-                    <!-- Mitsubishi Card -->
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-                        <div class="relative">
-                            <img src="img/mitsubishi.jpg" alt="Land Cruiser" class="w-full h-48 object-cover">
-                            <div class="absolute top-4 right-4">
-                                <span class="bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium">SUV</span>
-                            </div>
-                        </div>
-                        <div class="p-5">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900">Mitsubishi</h3>
-                                    <p class="text-gray-500 text-sm">Luxury SUV</p>
-                                </div>
-                                <span class="text-xl font-bold text-blue-600">₱500</span>
-                            </div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">7 seats</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-500">Auto</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-500">Per hour</span>
-                                <button onclick="showModal('mitsubishi')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200">
-                                    View
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- End of Static Vehicle Cards -->
-
-                <!-- Vehicle Modal -->
-                <div id="vehicleModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-                    <div class="bg-white rounded-xl max-w-xl w-full mx-4 overflow-hidden"> <!-- Changed from max-w-2xl to max-w-xl -->
-                        <!-- Modal Header with close button -->
-                        <div class="flex justify-between items-center p-3 border-b"> <!-- Changed padding from p-4 to p-3 -->
-                            <h3 class="text-lg font-bold text-gray-900" id="modalTitle"></h3> <!-- Changed from text-xl to text-lg -->
-                            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Changed from w-6 h-6 to w-5 h-5 -->
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <!-- Vehicle Details Modal -->
+            <div id="vehicleDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="bg-white rounded-xl max-w-2xl w-full overflow-hidden">
+                        <!-- Modal Header -->
+                        <div class="flex justify-between items-center p-4 border-b">
+                            <h3 class="text-xl font-bold" id="modalVehicleName"></h3>
+                            <button onclick="closeVehicleDetails()" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
                         </div>
+                        
                         <!-- Modal Content -->
-                        <div class="p-4"> <!-- Changed padding from p-6 to p-4 -->
-                            <img id="modalImage" class="w-full h-48 object-cover rounded-lg mb-4" src="" alt="Vehicle"> <!-- Changed height from h-64 to h-48 -->
+                        <div class="p-4">
+                            <!-- Vehicle Image -->
+                            <div class="relative h-64 mb-4">
+                                <img id="modalVehicleImage" class="w-full h-full object-cover rounded-lg" src="" alt="Vehicle">
+                            </div>
+                            
+                            <!-- Vehicle Information Grid -->
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <p class="text-sm text-gray-600">Year Model</p>
+                                    <p class="text-sm text-gray-600">Vehicle Type</p>
+                                    <p id="modalVehicleType" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Brand & Model</p>
+                                    <p id="modalBrandModel" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Year</p>
                                     <p id="modalYear" class="font-semibold"></p>
                                 </div>
                                 <div>
@@ -363,43 +475,127 @@
                                     <p id="modalPlate" class="font-semibold"></p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-600">Price</p>
-                                    <p id="modalPrice" class="font-semibold text-blue-600"></p>
+                                    <p class="text-sm text-gray-600">Transmission</p>
+                                    <p id="modalTransmission" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Capacity</p>
+                                    <p id="modalCapacity" class="font-semibold"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Rate</p>
+                                    <p id="modalAmount" class="font-semibold text-blue-600"></p>
                                 </div>
                             </div>
-                            <div class="mb-6">
+                            
+                            <!-- Description -->
+                            <div class="mb-4">
                                 <p class="text-sm text-gray-600">Description</p>
                                 <p id="modalDescription" class="text-gray-700"></p>
                             </div>
-                            <button onclick="bookNow()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-                                BOOK NOW
-                            </button>
                         </div>
                     </div>
                 </div>
-
-                <!-- Quick Filters -->
-                <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
-                    <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-200 cursor-pointer transition-colors flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Passenger Capacity
-                    </span>
-                    <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-200 cursor-pointer transition-colors flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Duration
-                    </span>
-                    <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-200 cursor-pointer transition-colors flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Available Now
-                    </span>
-                </div>
             </div>
+
+            <script>
+                function viewVehicleDetails(vehicle) {
+                    // Update modal content
+                    document.getElementById('modalVehicleName').textContent = vehicle.VEHICLE_BRAND + ' ' + vehicle.MODEL;
+                    document.getElementById('modalVehicleImage').src = vehicle.IMAGES;
+                    document.getElementById('modalVehicleType').textContent = vehicle.VEHICLE_TYPE;
+                    document.getElementById('modalBrandModel').textContent = vehicle.VEHICLE_BRAND + ' ' + vehicle.MODEL;
+                    document.getElementById('modalYear').textContent = vehicle.YEAR;
+                    document.getElementById('modalColor').textContent = vehicle.COLOR;
+                    document.getElementById('modalPlate').textContent = vehicle.LICENSE_PLATE;
+                    document.getElementById('modalTransmission').textContent = vehicle.TRANSMISSION;
+                    document.getElementById('modalCapacity').textContent = vehicle.CAPACITY;
+                    document.getElementById('modalAmount').textContent = '₱' + parseFloat(vehicle.AMOUNT).toLocaleString(undefined, {minimumFractionDigits: 2});
+                    document.getElementById('modalDescription').textContent = vehicle.VEHICLE_DESCRIPTION;
+
+                    // Show modal
+                    document.getElementById('vehicleDetailsModal').classList.remove('hidden');
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling
+                }
+
+                function closeVehicleDetails() {
+                    document.getElementById('vehicleDetailsModal').classList.add('hidden');
+                    document.body.style.overflow = ''; // Restore scrolling
+                }
+
+                // Close modal when clicking outside
+                document.getElementById('vehicleDetailsModal').addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeVehicleDetails();
+                    }
+                });
+
+                function updateQuantity(button, change) {
+                    const input = button.parentElement.querySelector('input');
+                    const currentValue = parseInt(input.value);
+                    const maxValue = parseInt(input.getAttribute('max'));
+                    const newValue = currentValue + change;
+                    
+                    if (newValue >= 1 && newValue <= maxValue) {
+                        input.value = newValue;
+                    }
+                }
+
+                let selectedVehicles = new Set();
+
+                function toggleVehicleSelection(card, vehicleId) {
+                    card.classList.toggle('selected');
+                    
+                    if (selectedVehicles.has(vehicleId)) {
+                        selectedVehicles.delete(vehicleId);
+                    } else {
+                        selectedVehicles.add(vehicleId);
+                    }
+                    
+                    document.getElementById('selectedVehicles').value = Array.from(selectedVehicles).join(',');
+                    document.getElementById('selected_vehicles_form').value = Array.from(selectedVehicles).join(',');
+                }
+
+                function proceedToBooking() {
+                    if (selectedVehicles.size === 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'No Vehicles Selected',
+                            text: 'Please select at least one vehicle to proceed with booking.',
+                            confirmButtonColor: '#2563eb'
+                        });
+                        return;
+                    }
+
+                    // Get form values
+                    const pickupLocation = document.querySelector('select[name="pickup_location"]').value;
+                    const startDate = document.querySelector('input[name="start_date"]').value;
+                    const returnDate = document.querySelector('input[name="return_date"]').value;
+                    const driverType = document.querySelector('select[name="driver_type"]').value;
+
+                    // Set form values
+                    document.getElementById('selected_vehicles_form').value = Array.from(selectedVehicles).join(',');
+                    document.getElementById('pickup_location_form').value = pickupLocation;
+                    document.getElementById('start_date_form').value = startDate;
+                    document.getElementById('return_date_form').value = returnDate;
+                    document.getElementById('driver_type_form').value = driverType;
+
+                    // Submit form
+                    document.getElementById('bookingForm').submit();
+                }
+            </script>
+
+            <!-- Add styles for selected cards -->
+            <style>
+                .vehicle-card.selected {
+                    border: 2px solid #2563eb;
+                    position: relative;
+                }
+                
+                .vehicle-card.selected .check-indicator {
+                    display: block;
+                }
+            </style>
         </div>
     </main>
 
@@ -410,47 +606,7 @@
             // Smooth scroll to vehicles
             vehicleCards.scrollIntoView({ behavior: 'smooth' });
         }
-
-        // Vehicle data
-        const vehicles = {
-            'mercedes': {
-                title: 'Mercedes Benz C-Class',
-                image: 'img/mercedes.jpg',
-                year: '2023',
-                color: 'Silver',
-                plate: 'ABC 123',
-                price: '₱550 per hour',
-                description: 'Luxury sedan featuring premium leather interior, advanced safety features, and superior comfort for an exceptional driving experience.'
-            },
-            'hyundai': {
-                title: 'Hyundai Sonata',
-                image: 'img/hyundai.jpg',
-                year: '2022',
-                color: 'White',
-                plate: 'XYZ 789',
-                price: '₱600 per hour',
-                description: 'Modern comfort sedan with spacious interior, fuel efficiency, and smart technology features.'
-            },
-            'kia': {
-                title: 'Kia Forte',
-                image: 'img/kia.jpg',
-                year: '2022',
-                color: 'Red',
-                plate: 'DEF 456',
-                price: '₱450 per hour',
-                description: 'Economic and reliable sedan with great fuel efficiency and modern amenities.'
-            },
-            'mitsubishi': {
-                title: 'Mitsubishi Montero',
-                image: 'img/mitsubishi.jpg',
-                year: '2023',
-                color: 'Black',
-                plate: 'GHI 789',
-                price: '₱500 per hour',
-                description: 'Powerful SUV with excellent off-road capabilities and comfortable seating for 7 passengers.'
-            }
-        };
-
+        
         function showModal(vehicle) {
             const modal = document.getElementById('vehicleModal');
             const data = vehicles[vehicle];
@@ -486,6 +642,17 @@
                 closeModal();
             }
         });
+
+        function updateQuantity(button, change) {
+            const input = button.parentElement.querySelector('input');
+            const currentValue = parseInt(input.value);
+            const maxValue = parseInt(input.getAttribute('max'));
+            const newValue = currentValue + change;
+            
+            if (newValue >= 1 && newValue <= maxValue) {
+                input.value = newValue;
+            }
+        }
     </script>
     
     <!-- Footer Section -->

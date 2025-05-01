@@ -1,3 +1,151 @@
+<?php
+session_start();
+require_once('connect.php');
+
+// Store rental info in session when form is submitted from rent.php
+if (isset($_POST['rental_info'])) {
+    $_SESSION['rental_info'] = $_POST['rental_info'];
+}
+
+// Only validate and show errors if the form was actually submitted from cust_info.php
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
+    // Validate required fields
+    $required_fields = ['customerType', 'firstName', 'lastName', 'email', 'contactNumber', 'customerAddress', 'driverLicense'];
+    $errors = [];
+
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            $errors[] = ucfirst(str_replace('_', ' ', $field)) . " is required";
+        }
+    }
+
+    if (empty($errors)) {
+        // Get form data with proper validation
+        $customerType = htmlspecialchars(trim($_POST['customerType']));
+        $companyName = htmlspecialchars(trim($_POST['companyName'] ?? ''));
+        $jobTitle = htmlspecialchars(trim($_POST['jobTitle'] ?? ''));
+        $firstName = htmlspecialchars(trim($_POST['firstName']));
+        $lastName = htmlspecialchars(trim($_POST['lastName']));
+        $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+        $contactNum = preg_replace('/[^0-9+]/', '', $_POST['contactNumber']); // Only keep numbers and + symbol
+        $address = htmlspecialchars(trim($_POST['customerAddress']));
+        $driverLicense = htmlspecialchars(trim($_POST['driverLicense']));
+        $paymentMethod = htmlspecialchars(trim($_POST['paymentMethod']));
+
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Invalid email format";
+        }
+
+        // Validate contact number (basic format check)
+        if (!preg_match('/^[0-9+]{10,13}$/', $contactNum)) {
+            $errors[] = "Invalid contact number format";
+        }
+
+        // Use stored procedure for customer insertion
+        $stmt = mysqli_prepare($conn, "CALL sp_insert_customer(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "sssssssss", 
+            $customerType, 
+            $companyName, 
+            $jobTitle, 
+            $firstName, 
+            $lastName, 
+            $email, 
+            $contactNum, 
+            $address, 
+            $driverLicense
+        );
+        
+        $customerResult = mysqli_stmt_execute($stmt);
+        $customerId = mysqli_insert_id($conn);
+        mysqli_stmt_close($stmt);
+
+        if ($customerResult) {
+            // Insert payment information
+            $paymentStmt = mysqli_prepare($conn, "INSERT INTO payment (PAYMENT_METHOD) VALUES (?)");
+            mysqli_stmt_bind_param($paymentStmt, "s", $paymentMethod);
+            $paymentResult = mysqli_stmt_execute($paymentStmt);
+            $paymentId = mysqli_insert_id($conn);
+            mysqli_stmt_close($paymentStmt);
+
+            if ($paymentResult && isset($_SESSION['rental_info'])) {
+                $rentalInfo = $_SESSION['rental_info'];
+                $vehicles = explode(',', $rentalInfo['vehicles']);
+                $success = true;
+
+                // Create a rental record for each vehicle
+                foreach ($vehicles as $vehicleId) {
+                    $stmt = mysqli_prepare($conn, "CALL sp_InsertRental(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    mysqli_stmt_bind_param($stmt, "iiissssdi", 
+                        $customerId,
+                        null, // driver_id will be assigned later if needed
+                        $paymentId,
+                        $rentalInfo['driver_type'],
+                        $rentalInfo['pickup_location'],
+                        $rentalInfo['start_date'],
+                        $rentalInfo['return_date'],
+                        0, // total_amount will be calculated later
+                        1  // quantity per vehicle
+                    );
+                    
+                    if (!mysqli_stmt_execute($stmt)) {
+                        $success = false;
+                        break;
+                    }
+                    mysqli_stmt_close($stmt);
+
+                    // Update vehicle status to 'Reserved'
+                    $updateVehicleStmt = mysqli_prepare($conn, "CALL sp_UpdateVehicleStatus(?, ?)");
+                    mysqli_stmt_bind_param($updateVehicleStmt, "is", $vehicleId, "Reserved");
+                    mysqli_stmt_execute($updateVehicleStmt);
+                    mysqli_stmt_close($updateVehicleStmt);
+                }
+
+                if ($success) {
+                    // Clear rental info from session
+                    unset($_SESSION['rental_info']);
+                    
+                    echo "<script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Booking completed successfully!',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 1500,
+                                timerProgressBar: true,
+                                didOpen: (toast) => {
+                                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                                }
+                            }).then(function() {
+                                window.location.href='dashboard.php';
+                            });
+                        });
+                    </script>";
+                }
+            }
+        }
+    } else {
+        echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Please fill in all required fields: " . implode(", ", $errors) . "',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            });
+        </script>";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +153,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Information</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Wait for the DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const customerType = document.getElementById('customerType');
+            const companyName = document.getElementById('companyName');
+            const jobTitle = document.getElementById('jobTitle');
+
+            // Function to toggle fields based on customer type
+            function toggleFields() {
+                if (customerType.value === 'individual') {
+                    companyName.disabled = true;
+                    jobTitle.disabled = true;
+                    companyName.value = '';
+                    jobTitle.value = '';
+                    companyName.classList.add('bg-gray-100');
+                    jobTitle.classList.add('bg-gray-100');
+                    companyName.removeAttribute('required');
+                    jobTitle.removeAttribute('required');
+                } else if (customerType.value === 'company') {
+                    companyName.disabled = false;
+                    jobTitle.disabled = false;
+                    companyName.classList.remove('bg-gray-100');
+                    jobTitle.classList.remove('bg-gray-100');
+                    companyName.setAttribute('required', 'required');
+                    jobTitle.setAttribute('required', 'required');
+                }
+            }
+
+            // Add event listener to customer type dropdown
+            customerType.addEventListener('change', toggleFields);
+
+            // Initial check on page load
+            toggleFields();
+        });
+    </script>
 </head>
 <body class="bg-gray-50">
     <!-- Modern Header Section -->
@@ -82,17 +266,15 @@
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">Customer Information</h2>
                 <p class="text-gray-600 text-lg">Please fill in your details below</p>
             </div>
-            <form class="space-y-6">
+            <form class="space-y-6" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" id="customerForm">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <!-- Customer Type Dropdown -->
                     <div class="relative group">
                         <label for="customerType" class="block text-sm font-semibold text-gray-700 mb-2">Customer Type</label>
-                        <select id="customerType" name="customerType" class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
+                        <select id="customerType" name="customerType" required class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
                             <option value="" disabled selected>Select Customer Type</option>
                             <option value="individual">Individual Customer</option>
                             <option value="company">Corporate Customer</option>
-                            <option value="government">Government Agency</option>
-                            <option value="student">Student</option>
                         </select>
                         <div class="absolute right-4 top-[42px] pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -111,21 +293,21 @@
                     <!-- Last Name -->
                     <div class="relative group">
                         <label for="lastName" class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" placeholder="Enter last name"
+                        <input type="text" id="lastName" name="lastName" required placeholder="Enter last name"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
                     <!-- First Name -->
                     <div class="relative group">
                         <label for="firstName" class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                        <input type="text" id="firstName" name="firstName" placeholder="Enter first name"
+                        <input type="text" id="firstName" name="firstName" required placeholder="Enter first name"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
                     <!-- Email -->
                     <div class="relative group">
                         <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="Enter email address"
+                        <input type="email" id="email" name="email" required placeholder="Enter email address"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
@@ -139,42 +321,40 @@
                     <!-- Driver License -->
                     <div class="relative group">
                         <label for="driverLicense" class="block text-sm font-semibold text-gray-700 mb-2">Driver License</label>
-                        <input type="text" id="driverLicense" name="driverLicense" placeholder="Enter driver license number"
+                        <input type="text" id="driverLicense" name="driverLicense" required placeholder="Enter driver license number"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
                     <!-- Contact Number -->
                     <div class="relative group">
                         <label for="contactNumber" class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
-                        <input type="tel" id="contactNumber" name="contactNumber" placeholder="Enter contact number"
+                        <input type="tel" 
+                            id="contactNumber" 
+                            name="contactNumber" 
+                            required 
+                            placeholder="Enter contact number"
+                            pattern="[0-9]+"
+                            maxlength="11"
+                            class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
+                    </div>
+
+                    <!-- Customer Address (New Field) -->
+                    <div class="relative group">
+                        <label for="customerAddress" class="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                        <input type="text" id="customerAddress" name="customerAddress" required placeholder="Enter your address"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
                     <!-- Payment Method -->
                     <div class="relative group">
                         <label for="paymentMethod" class="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
-                        <select id="paymentMethod" name="paymentMethod" class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
+                        <select id="paymentMethod" name="paymentMethod" required class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
                             <option value="" disabled selected>Select Payment Method</option>
                             <option value="cash">Cash</option>
                             <option value="credit_card">Credit Card</option>
                             <option value="debit_card">Debit Card</option>
                             <option value="gcash">GCash</option>
                             <option value="maya">Maya</option>
-                        </select>
-                        <div class="absolute right-4 top-[42px] pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Driver Type -->
-                    <div class="relative group">
-                        <label for="driverType" class="block text-sm font-semibold text-gray-700 mb-2">Driver Type</label>
-                        <select id="driverType" name="driverType" class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
-                            <option value="" disabled selected>Select Driver Type</option>
-                            <option value="self">Self-Drive</option>
-                            <option value="with_driver">With Driver</option>
                         </select>
                         <div class="absolute right-4 top-[42px] pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -288,5 +468,134 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('customerForm');
+            const companyNameInput = document.getElementById('companyName');
+            const lastNameInput = document.getElementById('lastName');
+            const firstNameInput = document.getElementById('firstName');
+            const jobTitleInput = document.getElementById('jobTitle');
+            const contactNumberInput = document.getElementById('contactNumber');
+
+            function preventSpecialCharsAndNumbers(e) {
+                if (!/^[A-Za-z\s]$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Only letters and spaces are allowed',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            }
+
+            function preventNonNumbers(e) {
+                const input = e.target;
+                if (input.value.length >= 11 && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Contact number cannot be more than 11 digits',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                    return;
+                }
+
+                if (!/^[0-9]$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Only numbers are allowed for contact number',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            }
+
+            // Add event listeners for text inputs
+            companyNameInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
+            lastNameInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
+            firstNameInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
+            jobTitleInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
+            contactNumberInput.addEventListener('keypress', preventNonNumbers);
+
+            // Form validation before submit
+            form.addEventListener('submit', function(e) {
+                const namePattern = /^[A-Za-z\s]+$/;
+                const contactPattern = /^[0-9]+$/;
+
+                if (companyNameInput.value && !namePattern.test(companyNameInput.value)) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Company name can only contain letters and spaces'
+                    });
+                    return;
+                }
+
+                if (!namePattern.test(lastNameInput.value)) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Last name can only contain letters and spaces'
+                    });
+                    return;
+                }
+
+                if (!namePattern.test(firstNameInput.value)) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'First name can only contain letters and spaces'
+                    });
+                    return;
+                }
+
+                if (jobTitleInput.value && !namePattern.test(jobTitleInput.value)) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Job title can only contain letters and spaces'
+                    });
+                    return;
+                }
+
+                if (!contactPattern.test(contactNumberInput.value)) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Contact number can only contain numbers'
+                    });
+                    return;
+                }
+
+                if (contactNumberInput.value.length !== 11) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Input',
+                        text: 'Contact number must be exactly 11 digits'
+                    });
+                    return;
+                }
+            });
+        });
+    </script>
 </body>
 </html>

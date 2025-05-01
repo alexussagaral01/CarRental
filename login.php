@@ -74,25 +74,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100">
-    <!-- Navigation Bar -->
-    <header class="bg-white shadow-sm sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
-                            d="M8 17h8M8 17v-4m8 4v-4m-8 4h8m-8-4h8M4 11l2-6h12l2 6M4 11h16M4 11v6h16v-6" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M6 17h2M16 17h2" />
-                    </svg>
-                </div>
-                <div class="flex flex-col">
-                    <h1 class="text-2xl font-bold text-gray-800">RentWheels</h1>
-                    <span class="text-xs text-blue-600 font-medium -mt-1">Premium Car Rental</span>
+    <!-- Modern Header Section -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 fixed w-full top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo Section -->
+                <div class="flex items-center space-x-4">
+                    <div class="relative group">
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-200"></div>
+                        <div class="relative w-12 h-12 bg-black rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 17h8M8 17v-4m8 4v-4m-8 4h8m-8-4h8M4 11l2-6h12l2 6M4 11h16M4 11v6h16v-6" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">RentWheels</h1>
+                        <p class="text-xs font-medium text-gray-500">Premium Car Rental</p>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
+
+    <!-- Spacer for fixed header -->
+    <div class="h-20"></div>
     
     <!-- Main Content -->
     <div class="container mx-auto px-6 h-[calc(100vh-4rem)] flex items-center justify-center mt-1">
