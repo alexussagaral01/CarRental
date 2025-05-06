@@ -1,35 +1,72 @@
 <?php
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'vehicle_rental');
+session_start();
+require_once 'connect.php';
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+function insertRentalDetail($conn, $vehicle_id, $pickup_location, $start_date, $end_date) {
+    try {
+        $stmt = $conn->prepare("CALL sp_InsertRentalDetail(?, ?, ?, ?)");
+        $stmt->bind_param("isss", $vehicle_id, $pickup_location, $start_date, $end_date);
+        
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                return [
+                    'success' => true,
+                    'rental_id' => $row['rental_dtl_id'],
+                    'pickup_location' => $row['pickup_location'],
+                    'duration' => $row['duration'],
+                    'vat_amount' => $row['vat_amount'],
+                    'total' => $row['total'],
+                    'hourly_rate' => $row['hourly_rate']
+                ];
+            }
+        }
+        
+        return ['success' => false, 'error' => $stmt->error];
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    } finally {
+        $stmt->close();
+    }
 }
 
 // Handle search form submission
 if (isset($_POST['search'])) {
-    $vehicle_type = $_POST['vehicle_type'];
-    $capacity = $_POST['capacity'];
-    $transmission = $_POST['transmission'];
-    
-    $sql = "SELECT * FROM vehicle WHERE 1=1";
-    
-    if (!empty($vehicle_type)) {
-        $sql .= " AND VEHICLE_TYPE = '$vehicle_type'";
-    }
-    if (!empty($capacity)) {
-        $sql .= " AND CAPACITY = '$capacity'";
-    }
-    if (!empty($transmission)) {
-        $sql .= " AND TRANSMISSION = '$transmission'";
-    }
-    
-    $result = $conn->query($sql);
-    $vehicles = [];
-    
-    if ($result->num_rows > 0) {
-        while($row = $result->fetch_assoc()) {
-            $vehicles[] = $row;
+    $pickup_location = $_POST['pickup_location'];
+    $start_date = $_POST['start_date'];
+    $return_date = $_POST['return_date'];
+
+    // Basic validation
+    if (empty($pickup_location) || empty($start_date) || empty($return_date)) {
+        $error = "Please fill in all fields";
+    } else {
+        // Convert dates for comparison
+        $start = new DateTime($start_date);
+        $return = new DateTime($return_date);
+        $today = new DateTime();
+
+        if ($start < $today) {
+            $error = "Start date cannot be in the past";
+        } elseif ($return <= $start) {
+            $error = "Return date must be after start date";
+        } else {
+            // Query available vehicles
+            $sql = "SELECT * FROM vehicle WHERE STATUS = 'Available'";
+            $result = $conn->query($sql);
+            $vehicles = [];
+            
+            if ($result->num_rows > 0) {
+                while($row = $result->fetch_assoc()) {
+                    $vehicles[] = $row;
+                }
+            }
+
+            // Store search parameters in session for booking
+            $_SESSION['rental_info'] = [
+                'pickup_location' => $pickup_location,
+                'start_date' => $start_date,
+                'return_date' => $return_date
+            ];
         }
     }
 }
@@ -37,26 +74,20 @@ if (isset($_POST['search'])) {
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
     $customer_id = 1; // This should come from the logged-in user session
-    $driver_id = isset($_POST['driver_id']) ? $_POST['driver_id'] : null;
     $payment_id = null; // This will be updated when payment is processed
-    $rent_driver_type = $_POST['driver_type'];
     $pickup_location = $_POST['pickup_location'];
     $start_date = $_POST['start_date'];
     $return_date = $_POST['return_date'];
-    $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
     $total_amount = 0; // This will be calculated based on vehicle selection
 
-    $stmt = $conn->prepare("CALL sp_InsertRental(?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiissssdi", 
+    $stmt = $conn->prepare("CALL sp_InsertRental(?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iisssd", 
         $customer_id, 
-        $driver_id, 
         $payment_id, 
-        $rent_driver_type, 
         $pickup_location, 
         $start_date, 
         $return_date, 
-        $total_amount,
-        $quantity
+        $total_amount
     );
 
     if ($stmt->execute()) {
@@ -80,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vehicle Available</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-50">
     <!-- Modern Header Section -->
@@ -103,8 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                 </div>
 
                 <!-- Navigation -->
-                <nav class="hidden md:block">
-                    <ul class="flex space-x-1">
+                <nav class="hidden md:block mx-auto">
+                    <ul class="flex space-x-4 justify-center">
                         <li>
                             <a href="dashboard.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -118,12 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                <span>Notifications</span>
-                            </a>
-                        </li>
-                        <li>
                             <a href="details.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span>About</span>
@@ -131,18 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                         </li>
                     </ul>
                 </nav>
-
-                <!-- Search and Profile Section -->
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <input type="text" placeholder="Search vehicles..." class="w-64 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
-                        <button class="absolute right-3 top-2.5 text-gray-400 hover:text-blue-600 transition-colors duration-200">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </header>
@@ -170,21 +184,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                     <h2 class="text-2xl font-bold text-gray-800">Rental Details</h2>
                     <p class="text-gray-500 mt-1">Find available vehicles for your trip</p>
                 </div>
-                <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">Best Rates</span>
+                <a href="cust_info.php" 
+                   class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span>Proceed to Customer Info</span>
+                </a>
             </div>
             
             <!-- Rental Form -->
             <form method="POST" action="" class="space-y-8">
+                <?php if (isset($error)): ?>
+                <div class="bg-red-50 text-red-600 p-4 rounded-lg">
+                    <?php echo $error; ?>
+                </div>
+                <?php endif; ?>
+                
                 <!-- Location and Dates -->
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div class="md:col-span-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Location</label>
                         <div class="relative">
                             <select name="pickup_location" required class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
                                 <option value="" disabled selected>Select Location</option>
-                                <option value="Cebu City Downtown">Cebu City Downtown</option>
-                                <option value="Mactan Airport">Mactan Airport</option>
-                                <option value="Mandaue City">Mandaue City</option>
+                                <option value="Cebu City Downtown" <?php echo (isset($_POST['pickup_location']) && $_POST['pickup_location'] == 'Cebu City Downtown') ? 'selected' : ''; ?>>Cebu City Downtown</option>
+                                <option value="Mactan Airport" <?php echo (isset($_POST['pickup_location']) && $_POST['pickup_location'] == 'Mactan Airport') ? 'selected' : ''; ?>>Mactan Airport</option>
+                                <option value="Mandaue City" <?php echo (isset($_POST['pickup_location']) && $_POST['pickup_location'] == 'Mandaue City') ? 'selected' : ''; ?>>Mandaue City</option>
                             </select>
                             <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -194,67 +220,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                         </div>
                     </div>
 
-                    <div class="md:col-span-4">
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
                         <div class="relative">
                             <input type="datetime-local" 
                                    name="start_date"
                                    required
+                                   value="<?php echo isset($_POST['start_date']) ? $_POST['start_date'] : ''; ?>"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                                    min="<?php echo date('Y-m-d\TH:i'); ?>">
                         </div>
                     </div>
 
-                    <div class="md:col-span-4">
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Return Date & Time</label>
                         <div class="relative">
                             <input type="datetime-local" 
                                    name="return_date"
                                    required
+                                   value="<?php echo isset($_POST['return_date']) ? $_POST['return_date'] : ''; ?>"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                                    min="<?php echo date('Y-m-d\TH:i'); ?>">
                         </div>
-                    </div>
-                </div>
-
-                <!-- Additional Filters -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
-                        <select name="vehicle_type" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option value="">All Types</option>
-                            <option value="SUV">SUV</option>
-                            <option value="HATCHBACK">HATCHBACK</option>
-                            <option value="SEDAN">SEDAN</option>
-                            <option value="MPV">MPV</option>
-                            <option value="VAN">VAN</option>
-                            <option value="MINIBUS">MINIBUS</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
-                        <select name="capacity" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option value="">All Capacities</option>
-                            <option value="4-5">4-5 Person</option>
-                            <option value="7-8">7-8 Person</option>
-                            <option value="10-18">10-18 Person</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Transmission</label>
-                        <select name="transmission" class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option value="">All Types</option>
-                            <option value="automatic">Automatic</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Driver Type</label>
-                        <select name="driver_type" required class="w-full px-4 py-3 border border-gray-300 rounded-lg appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-                            <option value="" disabled selected>Select Driver Type</option>
-                            <option value="self">Self-Drive</option>
-                            <option value="with_driver">With Driver</option>
-                        </select>
                     </div>
                 </div>
 
@@ -270,164 +257,132 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
             </form>
 
             <!-- Dynamic Vehicle Cards -->
-            <?php if (isset($_POST['search'])): ?>
+            <?php if (isset($_POST['search']) && !isset($error) && !empty($vehicles)): ?>
             <div class="mt-8">
-                <?php if (!empty($vehicles)): ?>
-                    <!-- Add hidden input for selected vehicles -->
-                    <input type="hidden" id="selectedVehicles" name="selectedVehicles" value="">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Available Vehicles</h2>
+                    <p class="text-gray-500 mt-1">Select your preferred vehicle for booking</p>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[800px] overflow-y-auto p-4">
-                        <?php foreach ($vehicles as $vehicle): ?>
-                        <!-- Vehicle cards from database -->
-                        <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer vehicle-card"
-                             onclick="toggleVehicleSelection(this, <?php echo $vehicle['VEHICLE_ID']; ?>)"
-                             data-vehicle-id="<?php echo $vehicle['VEHICLE_ID']; ?>">
-                            <!-- Add selected indicator -->
-                            <div class="absolute top-4 right-4 z-10 hidden check-indicator">
-                                <div class="bg-blue-600 text-white p-2 rounded-full">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[800px] overflow-y-auto p-4">
+                    <?php foreach ($vehicles as $vehicle): ?>
+                    <!-- Vehicle cards from database -->
+                    <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer vehicle-card"
+                         onclick="toggleVehicleSelection(this, <?php echo $vehicle['VEHICLE_ID']; ?>)"
+                         data-vehicle-id="<?php echo $vehicle['VEHICLE_ID']; ?>">
+                        <!-- Add selected indicator -->
+                        <div class="absolute top-4 right-4 z-10 hidden check-indicator">
+                            <div class="bg-blue-600 text-white p-2 rounded-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <!-- Existing vehicle card content -->
+                        <div class="relative h-[300px] overflow-hidden">
+                            <img src="<?php echo $vehicle['IMAGES']; ?>" 
+                                 alt="<?php echo $vehicle['VEHICLE_BRAND']; ?>" 
+                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                            
+                            <!-- Overlay with status and type -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            <div class="absolute top-4 left-4 flex gap-2">
+                                <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                    <?php echo $vehicle['VEHICLE_TYPE']; ?>
+                                </span>
+                                <span class="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                    <?php echo $vehicle['STATUS']; ?>
+                                </span>
                             </div>
                             
-                            <!-- Existing vehicle card content -->
-                            <div class="relative h-[300px] overflow-hidden">
-                                <img src="<?php echo $vehicle['IMAGES']; ?>" 
-                                     alt="<?php echo $vehicle['VEHICLE_BRAND']; ?>" 
-                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
-                                
-                                <!-- Overlay with status and type -->
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                                <div class="absolute top-4 left-4 flex gap-2">
-                                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                                        <?php echo $vehicle['VEHICLE_TYPE']; ?>
-                                    </span>
-                                    <span class="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                                        <?php echo $vehicle['STATUS']; ?>
-                                    </span>
-                                </div>
-                                
-                                <!-- Price tag -->
-                                <div class="absolute top-4 right-4">
-                                    <div class="bg-white/90 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-lg font-bold">
-                                        ₱<?php echo number_format($vehicle['AMOUNT'], 2); ?>
-                                        <span class="text-xs text-gray-500">/day</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Vehicle Details Section -->
-                            <div class="p-6">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 class="text-xl font-bold text-gray-900"><?php echo $vehicle['VEHICLE_BRAND']; ?></h3>
-                                        <p class="text-gray-600 mt-1"><?php echo $vehicle['MODEL']; ?></p>
-                                    </div>
-                                    <span class="inline-flex items-center justify-center bg-blue-100 text-blue-600 px-2.5 py-0.5 rounded-full text-sm font-medium">
-                                        <?php echo $vehicle['LICENSE_PLATE']; ?>
-                                    </span>
-                                </div>
-
-                                <!-- Features Grid -->
-                                <div class="grid grid-cols-2 gap-4 mb-6">
-                                    <div class="flex items-center gap-2">
-                                        <div class="p-2 bg-blue-50 rounded-lg">
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm-5 14h2m-6 0h2m-6 0h2"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm text-gray-600"><?php echo $vehicle['CAPACITY']; ?> Seats</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="p-2 bg-blue-50 rounded-lg">
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm text-gray-600"><?php echo $vehicle['TRANSMISSION']; ?></span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="p-2 bg-blue-50 rounded-lg">
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm text-gray-600"><?php echo $vehicle['YEAR']; ?></span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="p-2 bg-blue-50 rounded-lg">
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm text-gray-600"><?php echo $vehicle['QUANTITY']; ?> Available</span>
-                                    </div>
-                                </div>
-
-                                <!-- Quantity Selector -->
-                                <div class="flex items-center gap-4 mb-4">
-                                    <label class="text-sm text-gray-600">Select Quantity:</label>
-                                    <div class="flex items-center">
-                                        <button type="button" 
-                                                onclick="updateQuantity(this, -1)" 
-                                                class="px-3 py-1 border border-gray-300 rounded-l-lg hover:bg-gray-100">
-                                            -
-                                        </button>
-                                        <input type="number" 
-                                               name="quantity" 
-                                               value="1" 
-                                               min="1" 
-                                               max="<?php echo $vehicle['QUANTITY']; ?>" 
-                                               class="w-16 text-center border-y border-gray-300 py-1"
-                                               readonly>
-                                        <button type="button" 
-                                                onclick="updateQuantity(this, 1)" 
-                                                class="px-3 py-1 border border-gray-300 rounded-r-lg hover:bg-gray-100">
-                                            +
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Action Buttons -->
-                                <div class="flex justify-center">
-                                    <button onclick="viewVehicleDetails(<?php echo htmlspecialchars(json_encode($vehicle)); ?>)" 
-                                            class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                        View Details
-                                    </button>
+                            <!-- Price tag -->
+                            <div class="absolute top-4 right-4">
+                                <div class="bg-white/90 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-lg font-bold">
+                                    ₱<?php echo number_format($vehicle['AMOUNT'], 2); ?>
+                                    <span class="text-xs text-gray-500">/day</span>
                                 </div>
                             </div>
                         </div>
-                        <?php endforeach; ?>
-                    </div>
 
-                    <!-- Single Booking Button -->
-                    <div class="mt-6 flex justify-center">
-                        <form method="POST" action="cust_info.php" id="bookingForm" class="w-full max-w-md">
-                            <input type="hidden" name="rental_info[vehicles]" id="selected_vehicles_form">
-                            <input type="hidden" name="rental_info[pickup_location]" id="pickup_location_form">
-                            <input type="hidden" name="rental_info[start_date]" id="start_date_form">
-                            <input type="hidden" name="rental_info[return_date]" id="return_date_form">
-                            <input type="hidden" name="rental_info[driver_type]" id="driver_type_form">
-                            <button type="button" 
-                                    onclick="proceedToBooking()" 
-                                    class="w-full bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                                Proceed to Booking
-                            </button>
-                        </form>
+                        <!-- Vehicle Details Section -->
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-900"><?php echo $vehicle['VEHICLE_BRAND']; ?></h3>
+                                    <p class="text-gray-600 mt-1"><?php echo $vehicle['MODEL']; ?></p>
+                                </div>
+                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-600 px-2.5 py-0.5 rounded-full text-sm font-medium">
+                                    <?php echo $vehicle['LICENSE_PLATE']; ?>
+                                </span>
+                            </div>
+
+                            <!-- Features Grid -->
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="flex items-center gap-2">
+                                    <div class="p-2 bg-blue-50 rounded-lg">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm-5 14h2m-6 0h2m-6 0h2"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm text-gray-600"><?php echo $vehicle['CAPACITY']; ?> Seats</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="p-2 bg-blue-50 rounded-lg">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm text-gray-600"><?php echo $vehicle['TRANSMISSION']; ?></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="p-2 bg-blue-50 rounded-lg">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm text-gray-600"><?php echo $vehicle['YEAR']; ?></span>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex justify-center">
+                                <button onclick="viewVehicleDetails(<?php echo htmlspecialchars(json_encode($vehicle)); ?>)" 
+                                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                <?php else: ?>
-                    <div class="text-center py-8 bg-white rounded-xl shadow">
-                        <p class="text-gray-500">No vehicles found matching your criteria.</p>
-                    </div>
-                <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Single Booking Button -->
+                <div class="mt-6 flex justify-center">
+                    <form method="POST" id="bookingForm" class="w-full max-w-md">
+                        <input type="hidden" name="vehicle_ids" id="selected_vehicles_form">
+                        <input type="hidden" name="pickup_location" id="pickup_location_form">
+                        <input type="hidden" name="start_date" id="start_date_form">
+                        <input type="hidden" name="return_date" id="return_date_form">
+                        <button type="button" 
+                                onclick="proceedToBooking()" 
+                                class="w-full bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            Book Vehicle
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php elseif (isset($_POST['search']) && !isset($error)): ?>
+            <div class="mt-8">
+                <div class="text-center py-8 bg-white rounded-xl shadow">
+                    <p class="text-gray-500">No vehicles available for the selected dates.</p>
+                </div>
             </div>
             <?php endif; ?>
 
@@ -530,17 +485,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                     }
                 });
 
-                function updateQuantity(button, change) {
-                    const input = button.parentElement.querySelector('input');
-                    const currentValue = parseInt(input.value);
-                    const maxValue = parseInt(input.getAttribute('max'));
-                    const newValue = currentValue + change;
-                    
-                    if (newValue >= 1 && newValue <= maxValue) {
-                        input.value = newValue;
-                    }
-                }
-
                 let selectedVehicles = new Set();
 
                 function toggleVehicleSelection(card, vehicleId) {
@@ -562,26 +506,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                             icon: 'warning',
                             title: 'No Vehicles Selected',
                             text: 'Please select at least one vehicle to proceed with booking.',
-                            confirmButtonColor: '#2563eb'
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
                         });
                         return;
                     }
 
-                    // Get form values
+                    // Since we only support one vehicle at a time for now
+                    const vehicleId = Array.from(selectedVehicles)[0];
                     const pickupLocation = document.querySelector('select[name="pickup_location"]').value;
                     const startDate = document.querySelector('input[name="start_date"]').value;
                     const returnDate = document.querySelector('input[name="return_date"]').value;
-                    const driverType = document.querySelector('select[name="driver_type"]').value;
 
-                    // Set form values
-                    document.getElementById('selected_vehicles_form').value = Array.from(selectedVehicles).join(',');
-                    document.getElementById('pickup_location_form').value = pickupLocation;
-                    document.getElementById('start_date_form').value = startDate;
-                    document.getElementById('return_date_form').value = returnDate;
-                    document.getElementById('driver_type_form').value = driverType;
+                    // Store rental details in session via AJAX
+                    fetch('process_rental_detail.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            vehicle_id: vehicleId,
+                            pickup_location: pickupLocation,
+                            start_date: startDate,
+                            return_date: returnDate
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success notification as toast in top-right corner
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Vehicle Booked Successfully!',
+                                text: 'Your booking is being processed. Please complete the customer information.',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true,
+                                didOpen: (toast) => {
+                                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                                }
+                            });
+                            
+                            // Store rental information in a form to submit to cust_info.php
+                            const rentalInfo = {
+                                rental_dtl_id: data.rental_id,
+                                vehicle_id: vehicleId,
+                                pickup_location: pickupLocation,
+                                start_date: startDate,
+                                return_date: returnDate,
+                                duration: data.duration,
+                                total: data.total,
+                                vat_amount: data.vat_amount,
+                                hourly_rate: data.hourly_rate
+                            };
 
-                    // Submit form
-                    document.getElementById('bookingForm').submit();
+                            // Create a hidden form to POST this data
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = 'cust_info.php';
+                            
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'rental_info';
+                            input.value = JSON.stringify(rentalInfo);
+                            
+                            form.appendChild(input);
+                            document.body.appendChild(form);
+                            
+                            // Short timeout to allow the toast to be visible before redirect
+                            setTimeout(() => {
+                                form.submit();
+                            }, 1000);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Booking Failed',
+                                text: data.error || 'Failed to process rental details.',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred while processing your request.',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    });
                 }
             </script>
 
@@ -614,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
             // Update modal content
             document.getElementById('modalTitle').textContent = data.title;
             document.getElementById('modalImage').src = data.image;
-            document.getElementById('modalYear').textContent = data.year;
+            document.getElementById('modalYear').textContent = data.year; 
             document.getElementById('modalColor').textContent = data.color;
             document.getElementById('modalPlate').textContent = data.plate;
             document.getElementById('modalPrice').textContent = data.price;
@@ -642,17 +669,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                 closeModal();
             }
         });
-
-        function updateQuantity(button, change) {
-            const input = button.parentElement.querySelector('input');
-            const currentValue = parseInt(input.value);
-            const maxValue = parseInt(input.getAttribute('max'));
-            const newValue = currentValue + change;
-            
-            if (newValue >= 1 && newValue <= maxValue) {
-                input.value = newValue;
-            }
-        }
     </script>
     
     <!-- Footer Section -->

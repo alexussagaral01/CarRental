@@ -10,7 +10,7 @@ if (isset($_POST['rental_info'])) {
 // Only validate and show errors if the form was actually submitted from cust_info.php
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
     // Validate required fields
-    $required_fields = ['customerType', 'firstName', 'lastName', 'email', 'contactNumber', 'customerAddress', 'driverLicense'];
+    $required_fields = ['customerType', 'firstName', 'lastName', 'email', 'contactNumber', 'customerAddress', 'driverLicense', 'driverType'];
     $errors = [];
 
     foreach ($required_fields as $field) {
@@ -31,6 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
         $address = htmlspecialchars(trim($_POST['customerAddress']));
         $driverLicense = htmlspecialchars(trim($_POST['driverLicense']));
         $paymentMethod = htmlspecialchars(trim($_POST['paymentMethod']));
+        $driverType = htmlspecialchars(trim($_POST['driverType'])); // Add this line
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -42,25 +43,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
             $errors[] = "Invalid contact number format";
         }
 
-        // Use stored procedure for customer insertion
-        $stmt = mysqli_prepare($conn, "CALL sp_insert_customer(?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "sssssssss", 
-            $customerType, 
-            $companyName, 
-            $jobTitle, 
-            $firstName, 
-            $lastName, 
-            $email, 
-            $contactNum, 
-            $address, 
-            $driverLicense
-        );
+        // Start transaction to ensure data consistency
+        mysqli_begin_transaction($conn);
         
-        $customerResult = mysqli_stmt_execute($stmt);
-        $customerId = mysqli_insert_id($conn);
-        mysqli_stmt_close($stmt);
+        try {
+            // Use stored procedure for customer insertion
+            $stmt = mysqli_prepare($conn, "CALL sp_insert_customer(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, "ssssssssss", 
+                $customerType,
+                $driverType,  // Add this parameter 
+                $companyName, 
+                $jobTitle, 
+                $firstName, 
+                $lastName, 
+                $email, 
+                $contactNum, 
+                $address, 
+                $driverLicense
+            );
+            
+            $customerResult = mysqli_stmt_execute($stmt);
+            
+            // After insertion, we need to fetch the customer ID
+            // Since sp_insert_customer doesn't return the ID, we need to query for it
+            mysqli_stmt_close($stmt);
+            
+            // Query for customer ID based on unique information
+            $getCustomerIdQuery = "SELECT CUSTOMER_ID FROM customer 
+                                  WHERE FIRST_NAME = ? AND LAST_NAME = ? AND EMAIL = ? AND DRIVERS_LICENSE = ? 
+                                  ORDER BY CUSTOMER_ID DESC LIMIT 1";
+            $stmt = mysqli_prepare($conn, $getCustomerIdQuery);
+            mysqli_stmt_bind_param($stmt, "ssss", $firstName, $lastName, $email, $driverLicense);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_bind_result($stmt, $customerId);
+            
+            if (!mysqli_stmt_fetch($stmt)) {
+                throw new Exception("Failed to retrieve customer ID");
+            }
+            
+            mysqli_stmt_close($stmt);
 
-        if ($customerResult) {
             // Insert payment information
             $paymentStmt = mysqli_prepare($conn, "INSERT INTO payment (PAYMENT_METHOD) VALUES (?)");
             mysqli_stmt_bind_param($paymentStmt, "s", $paymentMethod);
@@ -68,65 +90,95 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
             $paymentId = mysqli_insert_id($conn);
             mysqli_stmt_close($paymentStmt);
 
-            if ($paymentResult && isset($_SESSION['rental_info'])) {
-                $rentalInfo = $_SESSION['rental_info'];
-                $vehicles = explode(',', $rentalInfo['vehicles']);
-                $success = true;
-
-                // Create a rental record for each vehicle
-                foreach ($vehicles as $vehicleId) {
-                    $stmt = mysqli_prepare($conn, "CALL sp_InsertRental(?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    mysqli_stmt_bind_param($stmt, "iiissssdi", 
-                        $customerId,
-                        null, // driver_id will be assigned later if needed
-                        $paymentId,
-                        $rentalInfo['driver_type'],
-                        $rentalInfo['pickup_location'],
-                        $rentalInfo['start_date'],
-                        $rentalInfo['return_date'],
-                        0, // total_amount will be calculated later
-                        1  // quantity per vehicle
-                    );
-                    
-                    if (!mysqli_stmt_execute($stmt)) {
-                        $success = false;
-                        break;
-                    }
-                    mysqli_stmt_close($stmt);
-
-                    // Update vehicle status to 'Reserved'
-                    $updateVehicleStmt = mysqli_prepare($conn, "CALL sp_UpdateVehicleStatus(?, ?)");
-                    mysqli_stmt_bind_param($updateVehicleStmt, "is", $vehicleId, "Reserved");
-                    mysqli_stmt_execute($updateVehicleStmt);
-                    mysqli_stmt_close($updateVehicleStmt);
-                }
-
-                if ($success) {
-                    // Clear rental info from session
-                    unset($_SESSION['rental_info']);
-                    
-                    echo "<script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: 'Booking completed successfully!',
-                                toast: true,
-                                position: 'top-end',
-                                showConfirmButton: false,
-                                timer: 1500,
-                                timerProgressBar: true,
-                                didOpen: (toast) => {
-                                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                                }
-                            }).then(function() {
-                                window.location.href='dashboard.php';
-                            });
-                        });
-                    </script>";
-                }
+            if (!$paymentResult) {
+                throw new Exception("Failed to insert payment information");
             }
+
+            // Get rental details from session
+            $rentalInfo = isset($_SESSION['rental_info']) ? json_decode($_SESSION['rental_info'], true) : null;
+            
+            if ($rentalInfo) {
+                $rentalDtlId = isset($_SESSION['rental_dtl_id']) ? $_SESSION['rental_dtl_id'] : 0;
+                $vehicleId = isset($_SESSION['vehicle_id']) ? $_SESSION['vehicle_id'] : 
+                            (isset($rentalInfo['vehicle_id']) ? $rentalInfo['vehicle_id'] : 0);
+                
+                if ($rentalDtlId <= 0 || $vehicleId <= 0) {
+                    throw new Exception("Missing rental details or vehicle information");
+                }
+                
+                // Call stored procedure to insert rental header
+                $rentalHdrStmt = mysqli_prepare($conn, "CALL sp_insert_rental_hdr(?, ?, ?, ?)");
+                mysqli_stmt_bind_param($rentalHdrStmt, "iiii", 
+                    $rentalDtlId,
+                    $customerId,
+                    $paymentId,
+                    $vehicleId
+                );
+                
+                $rentalHdrResult = mysqli_stmt_execute($rentalHdrStmt);
+                
+                if (!$rentalHdrResult) {
+                    throw new Exception("Failed to create rental header: " . mysqli_stmt_error($rentalHdrStmt));
+                }
+                
+                // Get the rental header ID
+                $result = mysqli_stmt_get_result($rentalHdrStmt);
+                if ($row = mysqli_fetch_assoc($result)) {
+                    $_SESSION['rental_hdr_id'] = $row['rental_hdr_id'];
+                } else {
+                    throw new Exception("Failed to retrieve rental header ID");
+                }
+                
+                mysqli_stmt_close($rentalHdrStmt);
+            } else {
+                throw new Exception("No rental information found in session");
+            }
+            
+            // Store IDs in session for transaction details page
+            $_SESSION['customer_id'] = $customerId;
+            $_SESSION['payment_id'] = $paymentId;
+            
+            // If we reach this point, commit the transaction
+            mysqli_commit($conn);
+            
+            echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Customer information saved successfully!',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer)
+                            toast.addEventListener('mouseleave', Swal.resumeTimer)
+                        }
+                    }).then(function() {
+                        window.location.href = 'transaction_details.php';
+                    });
+                });
+            </script>";
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            mysqli_rollback($conn);
+            
+            echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'An error occurred: " . addslashes($e->getMessage()) . "',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                });
+            </script>";
         }
     } else {
         echo "<script>
@@ -262,9 +314,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
     <div class="max-w-4xl mx-auto my-8">
         <!-- Form Content -->
         <div class="bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-2xl p-8 border border-gray-100">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-800 mb-2">Customer Information</h2>
-                <p class="text-gray-600 text-lg">Please fill in your details below</p>
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Customer Information</h2>
+                    <p class="text-gray-600 text-lg">Please fill in your details below</p>
+                </div>
+                <a href="transaction_details.php" 
+                   class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span>View Transaction</span>
+                </a>
             </div>
             <form class="space-y-6" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" id="customerForm">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -362,9 +423,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
                             </svg>
                         </div>
                     </div>
+
+                    <!-- Driver Type Dropdown - Add this section -->
+                    <div class="relative group">
+                        <label for="driverType" class="block text-sm font-semibold text-gray-700 mb-2">Driver Type</label>
+                        <select id="driverType" name="driverType" required class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none hover:border-blue-400">
+                            <option value="" disabled selected>Select Driver Type</option>
+                            <option value="self">Self Drive</option>
+                            <option value="with_driver">With Driver</option>
+                        </select>
+                        <div class="absolute right-4 top-[42px] pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Back and Submit Buttons -->
+                <!-- Back and Submit Button - Modify this section -->
                 <div class="flex justify-between items-center mt-10 pt-6 border-t border-gray-100">
                     <a href="rent.php" class="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

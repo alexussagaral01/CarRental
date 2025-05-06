@@ -153,11 +153,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     >
                         Sign In
                     </button>
-                    
-                    <p class="text-center text-gray-600">
-                        Don't have an account? 
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Sign up</a>
-                    </p>
                 </form>
             </div>
             

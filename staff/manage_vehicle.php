@@ -22,7 +22,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $transmission = $_POST['TRANSMISSION'];
     $status = $_POST['STATUS'];
     $amount = $_POST['AMOUNT'];
-    $quantity = $_POST['QUANTITY'];  // Add this line
 
     // Handle image upload
     if(isset($_FILES['IMAGES']) && $_FILES['IMAGES']['error'][0] == 0) {
@@ -67,8 +66,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </script>";
             } else {
                 // Call stored procedure to add vehicle
-                $stmt = $conn->prepare("CALL sp_AddVehicle(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isssisssssssdi", 
+                $stmt = $conn->prepare("CALL sp_AddVehicle(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("isssisssssssd", 
                     $staff_id,           // INT
                     $vehicle_type,       // VARCHAR
                     $vehicle_brand,      // VARCHAR
@@ -81,8 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $capacity,          // VARCHAR
                     $transmission,      // VARCHAR
                     $status,            // VARCHAR
-                    $amount,            // DECIMAL
-                    $quantity           // INT (new parameter)
+                    $amount            // DECIMAL
                 );
 
                 if ($stmt->execute()) {
@@ -461,19 +459,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
                             </div>
 
-                            <!-- Quantity Section - Add this new section -->
-                            <div class="bg-gray-50 p-6 rounded-xl space-y-4">
-                                <h4 class="font-medium text-gray-700">Quantity Available</h4>
-                                <div class="relative">
-                                    <input type="number" 
-                                           name="QUANTITY" 
-                                           required 
-                                           min="1"
-                                           value="1"
-                                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                </div>
-                            </div>
-
                             <!-- Submit Button -->
                             <button type="submit" class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors">
                                 Add Vehicle
@@ -763,7 +748,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const colorInput = form.querySelector('input[name="COLOR"]');
             const yearInput = form.querySelector('input[name="YEAR"]');
             const amountInput = form.querySelector('input[name="AMOUNT"]');
-            const quantityInput = form.querySelector('input[name="QUANTITY"]');
 
             function preventSpecialCharsAndNumbers(e) {
                 if (!/^[A-Za-z\s]$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
@@ -817,22 +801,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
             });
 
-            // Add quantity validation
-            quantityInput.addEventListener('input', function(e) {
-                if (this.value < 1) {
-                    this.value = 1;
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Quantity',
-                        text: 'Quantity must be at least 1',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                }
-            });
-
             // Form validation before submit
             form.addEventListener('submit', function(e) {
                 const brandValue = brandInput.value;
@@ -840,7 +808,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 const colorValue = colorInput.value;
                 const yearValue = yearInput.value;
                 const amountValue = parseFloat(amountInput.value);
-                const quantityValue = parseInt(quantityInput.value);
 
                 const pattern = /^[A-Za-z\s]+$/;
                 const yearPattern = /^[0-9]{4}$/;
@@ -902,16 +869,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         icon: 'error',
                         title: 'Invalid Amount',
                         text: 'Please enter a valid amount greater than 0'
-                    });
-                    return;
-                }
-
-                if (isNaN(quantityValue) || quantityValue < 1) {
-                    e.preventDefault();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Quantity',
-                        text: 'Please enter a valid quantity (minimum 1)'
                     });
                     return;
                 }

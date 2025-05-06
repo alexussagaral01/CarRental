@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $transmission = $_POST['TRANSMISSION'];
     $status = $_POST['STATUS'];
     $amount = $_POST['AMOUNT'];
-    $quantity = $_POST['QUANTITY'];
+    // Removed quantity field
 
     // Update query
     $update_query = "UPDATE vehicle SET 
@@ -38,12 +38,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         CAPACITY = ?,
         TRANSMISSION = ?,
         STATUS = ?,
-        AMOUNT = ?,
-        QUANTITY = ?
+        AMOUNT = ?
         WHERE VEHICLE_ID = ?";
 
     $stmt = $conn->prepare($update_query);
-    $stmt->bind_param("sssissssssdii", 
+    $stmt->bind_param("sssissssssdi", 
         $vehicle_type,
         $vehicle_brand,
         $model,
@@ -55,7 +54,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $transmission,
         $status,
         $amount,
-        $quantity,
         $vehicle_id
     );
 
@@ -366,12 +364,6 @@ if (!$vehicle) {
                     <div class="bg-gray-50 p-6 rounded-xl space-y-4">
                         <h4 class="font-medium text-gray-700">Amount</h4>
                         <input type="number" name="AMOUNT" value="<?php echo $vehicle['AMOUNT']; ?>" required min="0" step="0.01" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
-                    </div>
-
-                    <!-- Quantity Section -->
-                    <div class="bg-gray-50 p-6 rounded-xl space-y-4">
-                        <h4 class="font-medium text-gray-700">Quantity</h4>
-                        <input type="number" name="QUANTITY" value="<?php echo $vehicle['QUANTITY']; ?>" required min="1" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
                     </div>
 
                     <!-- Submit Button -->
