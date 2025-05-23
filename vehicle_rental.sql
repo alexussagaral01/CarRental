@@ -25,7 +25,7 @@ DELIMITER $$
 --
 -- Procedures
 --
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_AddDriver` (IN `p_staff_id` INT, IN `p_driver_name` VARCHAR(30), IN `p_license_number` VARCHAR(30), IN `p_contact_number` VARCHAR(20), IN `p_address` VARCHAR(100), IN `p_birthdate` DATE, IN `p_gender` VARCHAR(10), IN `p_status` VARCHAR(20))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_AddDriver` (IN `p_staff_id` INT, IN `p_driver_name` VARCHAR(30), IN `p_license_number` VARCHAR(30), IN `p_contact_number` VARCHAR(20), IN `p_address` VARCHAR(100), IN `p_birthdate` DATE, IN `p_gender` VARCHAR(10), IN `p_status` VARCHAR(20), IN `p_image` VARCHAR(255))   BEGIN
     INSERT INTO driver(
         STAFF_ID,
         DRIVER_NAME,
@@ -34,7 +34,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_AddDriver` (IN `p_staff_id` INT,
         ADDRESS,
         BIRTHDATE,
         GENDER,
-        STATUS
+        STATUS,
+        IMAGE
     ) VALUES (
         p_staff_id,
         p_driver_name,
@@ -43,7 +44,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_AddDriver` (IN `p_staff_id` INT,
         p_address,
         p_birthdate,
         p_gender,
-        p_status
+        p_status,
+        p_image
     );
 END$$
 
@@ -231,7 +233,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_staff` (IN `p_firstname` 
     VALUES (p_firstname, p_lastname, p_address, p_phone, p_username, p_password);
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_UpdateDriver` (IN `p_driver_id` INT, IN `p_staff_id` INT, IN `p_driver_name` VARCHAR(30), IN `p_license_number` VARCHAR(30), IN `p_contact_number` VARCHAR(20), IN `p_address` VARCHAR(100), IN `p_birthdate` DATE, IN `p_gender` VARCHAR(10), IN `p_status` VARCHAR(20))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_UpdateDriver` (IN `p_driver_id` INT, IN `p_staff_id` INT, IN `p_driver_name` VARCHAR(30), IN `p_license_number` VARCHAR(30), IN `p_contact_number` VARCHAR(20), IN `p_address` VARCHAR(100), IN `p_birthdate` DATE, IN `p_gender` VARCHAR(10), IN `p_status` VARCHAR(20), IN `p_image` VARCHAR(255))   BEGIN
     UPDATE driver SET
         STAFF_ID = p_staff_id,
         DRIVER_NAME = p_driver_name,
@@ -240,7 +242,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_UpdateDriver` (IN `p_driver_id` 
         ADDRESS = p_address,
         BIRTHDATE = p_birthdate,
         GENDER = p_gender,
-        STATUS = p_status
+        STATUS = p_status,
+        IMAGE = IF(p_image != '', p_image, IMAGE)
     WHERE DRIVER_ID = p_driver_id;
 END$$
 
@@ -311,12 +314,6 @@ CREATE TABLE `customer` (
 -- Dumping data for table `customer`
 --
 
-INSERT INTO `customer` (`CUSTOMER_ID`, `CUSTOMER_TYPE`, `COMPANY_NAME`, `JOB_TITLE`, `FIRST_NAME`, `LAST_NAME`, `EMAIL`, `CONTACT_NUM`, `CUSTOMER_ADDRESS`, `DRIVER_TYPE`, `DRIVERS_LICENSE`, `ASSIGNED_DRIVER_ID`) VALUES
-(3, 'individual', '', '', 'TEST', 'TEST', 'TEST@gmail.com', '12312312312', 'TEST', 'with_driver', 'TEST12345', 2),
-(4, 'individual', '', '', 'SAMPLE', 'SAMPLE', 'SAMPLE@gmail.com', '14123123123', 'SAMPLE', 'with_driver', 'SAMPLE-1234', 3),
-(5, 'individual', '', '', 'TRY', 'TRY', 'TRY@GMAIL.COM', '21345445445', 'TRY', 'with_driver', 'TRY2131231', 4),
-(6, 'individual', '', '', 'TESTING', 'TESTING', 'TESTING@gmail.com', '56454654646', 'TESTING', 'with_driver', 'TESTING21312', 5);
-
 -- --------------------------------------------------------
 
 --
@@ -332,18 +329,15 @@ CREATE TABLE `driver` (
   `ADDRESS` varchar(100) NOT NULL,
   `BIRTHDATE` date NOT NULL,
   `GENDER` varchar(10) NOT NULL,
-  `STATUS` varchar(20) NOT NULL
+  `STATUS` varchar(20) NOT NULL,
+  `IMAGE` varchar(255) DEFAULT 'driver_images/default.jpg'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `driver`
 --
 
-INSERT INTO `driver` (`DRIVER_ID`, `STAFF_ID`, `DRIVER_NAME`, `LICENSE_NUMBER`, `CONTACT_NUMBER`, `ADDRESS`, `BIRTHDATE`, `GENDER`, `STATUS`) VALUES
-(2, 1, 'Alexus Sagaral', 'TEST', '09382470661', 'TEST', '2025-04-28', '0', 'Assigned'),
-(3, 1, 'Vince Bryant Cabunilas', 'TEST1', '09878786651', 'TEST1', '2025-04-28', '0', 'Assigned'),
-(4, 1, 'Mark Dave Catubig', 'SAMPLE-25213', '83138213123', 'SAMPLE', '2025-01-28', '0', 'Assigned'),
-(5, 1, 'Jeff Salimbangon Ginolos Monre', 'TESTING-123', '42544354353', 'TESTING', '2025-05-04', '0', 'Assigned');
+
 
 -- --------------------------------------------------------
 
@@ -353,18 +347,14 @@ INSERT INTO `driver` (`DRIVER_ID`, `STAFF_ID`, `DRIVER_NAME`, `LICENSE_NUMBER`, 
 
 CREATE TABLE `payment` (
   `PAYMENT_ID` int(11) NOT NULL,
-  `PAYMENT_METHOD` varchar(30) NOT NULL
+  `PAYMENT_METHOD` varchar(30) NOT NULL,
+  `STATUS` varchar(20) NOT NULL DEFAULT 'Paid'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `payment`
 --
 
-INSERT INTO `payment` (`PAYMENT_ID`, `PAYMENT_METHOD`) VALUES
-(3, 'cash'),
-(4, 'cash'),
-(5, 'cash'),
-(6, 'cash');
 
 -- --------------------------------------------------------
 
@@ -389,11 +379,6 @@ CREATE TABLE `rental_dtl` (
 -- Dumping data for table `rental_dtl`
 --
 
-INSERT INTO `rental_dtl` (`RENTAL_DTL_ID`, `VEHICLE_ID`, `PICKUP_LOCATION`, `START_DATE`, `END_DATE`, `HOURLY_RATE`) VALUES
-(1, 4, 'Cebu City Downtown', '2025-05-04 09:15:00', '2025-05-04 14:15:00', 499.00),
-(2, 5, 'Cebu City Downtown', '2025-05-04 09:50:00', '2025-05-07 09:50:00', 399.00),
-(3, 6, 'Cebu City Downtown', '2025-05-04 10:04:00', '2025-05-06 14:04:00', 399.00),
-(4, 7, 'Cebu City Downtown', '2025-05-04 10:10:00', '2025-05-09 10:10:00', 399.00);
 
 -- --------------------------------------------------------
 
@@ -413,12 +398,6 @@ CREATE TABLE `rental_hdr` (
 --
 -- Dumping data for table `rental_hdr`
 --
-
-INSERT INTO `rental_hdr` (`RENTAL_HDR_ID`, `RENTAL_DTL_ID`, `CUSTOMER_ID`, `PAYMENT_ID`, `VEHICLE_ID`, `DATE_CREATED`) VALUES
-(1, 1, 3, 3, 4, '2025-05-04 02:16:41'),
-(2, 2, 4, 4, 5, '2025-05-04 02:51:22'),
-(3, 3, 5, 5, 6, '2025-05-04 03:06:04'),
-(4, 4, 6, 6, 7, '2025-05-04 03:11:19');
 
 -- --------------------------------------------------------
 
@@ -470,11 +449,6 @@ CREATE TABLE `vehicle` (
 -- Dumping data for table `vehicle`
 --
 
-INSERT INTO `vehicle` (`VEHICLE_ID`, `STAFF_ID`, `VEHICLE_TYPE`, `VEHICLE_BRAND`, `MODEL`, `YEAR`, `COLOR`, `LICENSE_PLATE`, `VEHICLE_DESCRIPTION`, `IMAGES`, `CAPACITY`, `TRANSMISSION`, `STATUS`, `AMOUNT`) VALUES
-(4, 1, 'HATCHBACK', 'TEST', 'TEST', 2025, 'TEST', 'TEST-123', 'TEST', 'VEHICLE_IMAGES/6816cdb441173_1746324916.jpg', '4-5', 'Automatic', 'Rented', 499.00),
-(5, 1, 'SEDAN', 'SAMPLE', 'SAMPLE', 2023, 'SAMPLE', 'SAMPLE-123', 'SAMPLE', 'VEHICLE_IMAGES/6816d5b0d46aa_1746326960.jpg', '7-8', 'Automatic', 'Rented', 399.00),
-(6, 1, 'HATCHBACK', 'TRY', 'TRY', 2012, 'TRY', 'TRY-2312', 'TRY', 'VEHICLE_IMAGES/6816d950a4e29_1746327888.jpg', '4-5', 'Automatic', 'Rented', 399.00),
-(7, 1, 'SUV', 'TESTING', 'TESTING', 2018, 'TESTING', 'TESTING-123', 'TESTING', 'VEHICLE_IMAGES/6816daa2b0b19_1746328226.jpg', '4-5', 'Automatic', 'Rented', 399.00);
 
 --
 -- Indexes for dumped tables

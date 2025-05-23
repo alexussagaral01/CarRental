@@ -134,29 +134,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                     </div>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="hidden md:block mx-auto">
-                    <ul class="flex space-x-4 justify-center">
-                        <li>
-                            <a href="dashboard.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="rent.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Rent</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="details.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>About</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+                <!-- Navigation - Centered -->
+                <div class="flex-1 flex justify-center">
+                    <nav class="md:block">
+                        <ul class="flex space-x-8 justify-center">
+                            <li>
+                                <a href="dashboard.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                                    <span>Home</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="rent.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Rent</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="details.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>About</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                
+                <!-- Empty div for spacing balance -->
+                <div class="w-40"></div>
             </div>
         </div>
     </header>
@@ -184,13 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                     <h2 class="text-2xl font-bold text-gray-800">Rental Details</h2>
                     <p class="text-gray-500 mt-1">Find available vehicles for your trip</p>
                 </div>
-                <a href="cust_info.php" 
-                   class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    <span>Proceed to Customer Info</span>
-                </a>
+                <!-- Removed "Proceed to Customer Info" button -->
             </div>
             
             <!-- Rental Form -->
@@ -262,93 +261,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['search'])) {
                 <div class="text-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">Available Vehicles</h2>
                     <p class="text-gray-500 mt-1">Select your preferred vehicle for booking</p>
-                    
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[800px] overflow-y-auto p-4">
+                </div>
+                
+                <!-- Updated vehicle grid layout - 4 columns and scrollable container -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto p-2">
                     <?php foreach ($vehicles as $vehicle): ?>
-                    <!-- Vehicle cards from database -->
-                    <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer vehicle-card"
+                    <!-- Vehicle card with adjusted sizing -->
+                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer vehicle-card"
                          onclick="toggleVehicleSelection(this, <?php echo $vehicle['VEHICLE_ID']; ?>)"
                          data-vehicle-id="<?php echo $vehicle['VEHICLE_ID']; ?>">
                         <!-- Add selected indicator -->
-                        <div class="absolute top-4 right-4 z-10 hidden check-indicator">
-                            <div class="bg-blue-600 text-white p-2 rounded-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="absolute top-2 right-2 z-10 hidden check-indicator">
+                            <div class="bg-blue-600 text-white p-1.5 rounded-full">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </div>
                         </div>
                         
-                        <!-- Existing vehicle card content -->
-                        <div class="relative h-[300px] overflow-hidden">
+                        <!-- Reduced height of image container -->
+                        <div class="relative h-[160px] overflow-hidden">
                             <img src="<?php echo $vehicle['IMAGES']; ?>" 
                                  alt="<?php echo $vehicle['VEHICLE_BRAND']; ?>" 
                                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                             
                             <!-- Overlay with status and type -->
                             <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                            <div class="absolute top-4 left-4 flex gap-2">
-                                <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                            <div class="absolute top-2 left-2 flex gap-1">
+                                <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">
                                     <?php echo $vehicle['VEHICLE_TYPE']; ?>
                                 </span>
-                                <span class="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                <span class="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">
                                     <?php echo $vehicle['STATUS']; ?>
                                 </span>
                             </div>
                             
                             <!-- Price tag -->
-                            <div class="absolute top-4 right-4">
-                                <div class="bg-white/90 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-lg font-bold">
+                            <div class="absolute top-2 right-2">
+                                <div class="bg-white/90 backdrop-blur-sm text-blue-600 px-2 py-1 rounded-lg text-sm font-bold">
                                     ₱<?php echo number_format($vehicle['AMOUNT'], 2); ?>
-                                    <span class="text-xs text-gray-500">/day</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Vehicle Details Section -->
-                        <div class="p-6">
-                            <div class="flex justify-between items-start mb-4">
+                        <!-- Vehicle Details Section - Condensed -->
+                        <div class="p-3">
+                            <div class="flex justify-between items-start mb-2">
                                 <div>
-                                    <h3 class="text-xl font-bold text-gray-900"><?php echo $vehicle['VEHICLE_BRAND']; ?></h3>
-                                    <p class="text-gray-600 mt-1"><?php echo $vehicle['MODEL']; ?></p>
+                                    <h3 class="text-base font-bold text-gray-900"><?php echo $vehicle['VEHICLE_BRAND']; ?></h3>
+                                    <p class="text-xs text-gray-600"><?php echo $vehicle['MODEL']; ?></p>
                                 </div>
-                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-600 px-2.5 py-0.5 rounded-full text-sm font-medium">
+                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full text-xs font-medium">
                                     <?php echo $vehicle['LICENSE_PLATE']; ?>
                                 </span>
                             </div>
 
-                            <!-- Features Grid -->
-                            <div class="grid grid-cols-2 gap-4 mb-6">
-                                <div class="flex items-center gap-2">
-                                    <div class="p-2 bg-blue-50 rounded-lg">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <!-- Features Grid - Condensed -->
+                            <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+                                <div class="flex items-center gap-1">
+                                    <div class="p-1 bg-blue-50 rounded-md">
+                                        <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm-5 14h2m-6 0h2m-6 0h2"/>
                                         </svg>
                                     </div>
-                                    <span class="text-sm text-gray-600"><?php echo $vehicle['CAPACITY']; ?> Seats</span>
+                                    <span class="text-gray-600"><?php echo $vehicle['CAPACITY']; ?></span>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <div class="p-2 bg-blue-50 rounded-lg">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="flex items-center gap-1">
+                                    <div class="p-1 bg-blue-50 rounded-md">
+                                        <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                         </svg>
                                     </div>
-                                    <span class="text-sm text-gray-600"><?php echo $vehicle['TRANSMISSION']; ?></span>
+                                    <span class="text-gray-600"><?php echo $vehicle['TRANSMISSION']; ?></span>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <div class="p-2 bg-blue-50 rounded-lg">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="flex items-center gap-1">
+                                    <div class="p-1 bg-blue-50 rounded-md">
+                                        <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                         </svg>
                                     </div>
-                                    <span class="text-sm text-gray-600"><?php echo $vehicle['YEAR']; ?></span>
+                                    <span class="text-gray-600"><?php echo $vehicle['YEAR']; ?></span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <div class="p-1 bg-blue-50 rounded-md">
+                                        <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-600"><?php echo $vehicle['COLOR']; ?></span>
                                 </div>
                             </div>
 
-                            <!-- Action Buttons -->
+                            <!-- Action Button - Condensed -->
                             <div class="flex justify-center">
                                 <button onclick="viewVehicleDetails(<?php echo htmlspecialchars(json_encode($vehicle)); ?>)" 
-                                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="w-full bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>

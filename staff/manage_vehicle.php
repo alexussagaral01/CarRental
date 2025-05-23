@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $vehicle_description = $_POST['VEHICLE_DESCRIPTION'];
     $capacity = $_POST['CAPACITY'];
     $transmission = $_POST['TRANSMISSION'];
-    $status = $_POST['STATUS'];
+    $status = 'available'; // Override with default value regardless of form input
     $amount = $_POST['AMOUNT'];
 
     // Handle image upload
@@ -101,7 +101,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         toast.addEventListener('mouseleave', Swal.resumeTimer)
                                     }
                                 }).then(function() {
-                                    window.location = 'manage_vehicle.php';
+                                    // Redirect to the same page with a fragment identifier for the vehicle list tab
+                                    window.location = 'manage_vehicle.php?tab=vehicle-list';
                                 });
                             });
                         </script>";
@@ -159,10 +160,95 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>RentWheels - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="../css/manage_vehicle.css">
     <style>
-        .glass-effect {
-            backdrop-filter: blur(16px) saturate(180%);
-            background-color: rgba(255, 255, 255, 0.75);
+        /* Year dropdown styles */
+        .year-dropdown {
+            position: relative;
+        }
+        
+        .year-dropdown-button {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.625rem 1rem;
+            border: 1px solid #e5e7eb;
+            background-color: white;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .year-dropdown-button:hover {
+            border-color: #93c5fd;
+        }
+        
+        .year-dropdown-button:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .year-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            margin-top: 0.25rem;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: none;
+            padding: 12px;
+        }
+        
+        .year-dropdown-list.active {
+            display: block;
+        }
+        
+        .year-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .year-option {
+            padding: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+        
+        .year-option:hover {
+            background-color: #f3f4f6;
+            color: #3b82f6;
+        }
+        
+        .year-option.selected {
+            background-color: #eff6ff;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+        
+        /* Category header */
+        .year-category {
+            grid-column: 1 / -1;
+            font-weight: 500;
+            color: #6b7280;
+            font-size: 0.9rem;
+            padding: 4px 6px;
+            border-bottom: 1px solid #e5e7eb;
+            margin: 8px 0 4px 0;
+        }
+        
+        .year-category:first-child {
+            margin-top: 0;
         }
     </style>
 </head>
@@ -222,7 +308,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </li>
                         <li>
                             <a href="view_transactions.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2v3M9 5h6"/></svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9a2 2 0 012-2h2a2 2 0 012 2v3M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2v3M9 5h6"/></svg>
                                 <span>View Transactions</span>
                             </a>
                         </li>
@@ -302,7 +388,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">Vehicle Type</label>
-                                        <select name="VEHICLE_TYPE" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                        <select name="VEHICLE_TYPE" id="vehicleTypeSelect" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                                             <option value="" disabled selected>Select Type</option>
                                             <option value="SUV">SUV</option>
                                             <option value="HATCHBACK">HATCHBACK</option>
@@ -314,13 +400,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">Brand</label>
-                                        <input type="text" 
-                                            name="VEHICLE_BRAND" 
-                                            required 
-                                            placeholder="Enter Brand" 
-                                            pattern="[A-Za-z\s]+"
-                                            title="Please enter only letters and spaces"
-                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <select name="VEHICLE_BRAND" id="brandSelect" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                            <option value="" disabled selected>Select Type First</option>
+                                        </select>
                                     </div>
                                 </div>
 
@@ -328,24 +410,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">Model</label>
-                                        <input type="text" 
-                                            name="MODEL" 
-                                            required 
-                                            placeholder="Enter Model" 
-                                            pattern="[A-Za-z\s]+"
-                                            title="Please enter only letters and spaces"
-                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <select name="MODEL" id="modelSelect" required 
+                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                            <option value="" disabled selected>Select Brand First</option>
+                                        </select>
                                     </div>
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">Year</label>
-                                        <input type="text" 
-                                            name="YEAR" 
-                                            required 
-                                            placeholder="Enter Year" 
-                                            pattern="[0-9]{4}"
-                                            maxlength="4"
-                                            title="Please enter a valid 4-digit year"
-                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <div class="year-dropdown">
+                                            <input type="hidden" name="YEAR" id="yearField" value="" required>
+                                            <button type="button" id="yearDropdownButton" class="year-dropdown-button">
+                                                <span id="yearDisplay">Select Year</span>
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </button>
+                                            <div id="yearDropdownList" class="year-dropdown-list">
+                                                <div id="yearOptions" class="year-grid">
+                                                    <!-- Years will be inserted here dynamically, grouped by decades -->
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -358,13 +443,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">Color</label>
-                                        <input type="text" 
-                                            name="COLOR" 
-                                            required 
-                                            placeholder="Enter Color" 
-                                            pattern="[A-Za-z\s]+"
-                                            title="Please enter only letters and spaces"
-                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <select name="COLOR" required class="hidden">
+                                            <option value="" disabled selected>Select Color</option>
+                                            <option value="Black" data-color="#000000">Black</option>
+                                            <option value="White" data-color="#FFFFFF">White</option>
+                                            <option value="Silver" data-color="#C0C0C0">Silver</option>
+                                            <option value="Gray" data-color="#808080">Gray</option>
+                                            <option value="Red" data-color="#FF0000">Red</option>
+                                            <option value="Blue" data-color="#0000FF">Blue</option>
+                                            <option value="Dark Blue" data-color="#00008B">Dark Blue</option>
+                                            <option value="Sky Blue" data-color="#87CEEB">Sky Blue</option>
+                                            <option value="Navy Blue" data-color="#000080">Navy Blue</option>
+                                            <option value="Green" data-color="#008000">Green</option>
+                                            <option value="Dark Green" data-color="#006400">Dark Green</option>
+                                            <option value="Yellow" data-color="#FFFF00">Yellow</option>
+                                            <option value="Orange" data-color="#FFA500">Orange</option>
+                                            <option value="Brown" data-color="#A52A2A">Brown</option>
+                                            <option value="Beige" data-color="#F5F5DC">Beige</option>
+                                            <option value="Purple" data-color="#800080">Purple</option>
+                                            <option value="Pink" data-color="#FFC0CB">Pink</option>
+                                            <option value="Gold" data-color="#FFD700">Gold</option>
+                                            <option value="Burgundy" data-color="#800020">Burgundy</option>
+                                            <option value="Maroon" data-color="#800000">Maroon</option>
+                                            <option value="Teal" data-color="#008080">Teal</option>
+                                            <option value="Olive" data-color="#808000">Olive</option>
+                                            <option value="Champagne" data-color="#F7E7CE">Champagne</option>
+                                            <option value="Bronze" data-color="#CD7F32">Bronze</option>
+                                        </select>
+                                        <div id="colorPickerContainer" class="relative">
+                                            <div id="colorDisplay" class="selected-color-display">
+                                                <div id="selectedColorSwatch" class="color-swatch"></div>
+                                                <span id="selectedColorText" class="flex-1">Select Color</span>
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                            <div id="colorPalette" class="absolute z-30 w-[320px] mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden hidden">
+                                                <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                                                    <h4 class="text-sm font-medium text-gray-700">Select a car color</h4>
+                                                    <button id="closeColorPalette" type="button" class="text-gray-400 hover:text-gray-500">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div id="colorGrid" class="color-grid"></div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-gray-700">License Plate</label>
@@ -431,16 +556,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                             </div>
 
-                            <!-- Status Section -->
-                            <div class="bg-gray-50 p-6 rounded-xl space-y-4">
-                                <h4 class="font-medium text-gray-700">Status</h4>
-                                <select name="STATUS" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                                    <option value="" disabled selected>Select Status</option>
-                                    <option value="available">Available</option>
-                                    <option value="rented">Rented</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
-                            </div>
+                            <!-- Remove the Status Section completely and use a hidden input -->
+                            <input type="hidden" name="STATUS" value="available">
 
                             <!-- Amount Section -->
                             <div class="bg-gray-50 p-6 rounded-xl space-y-4">
@@ -452,7 +569,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <input type="number" 
                                            name="AMOUNT" 
                                            required 
-                                           min="0"
                                            step="0.01"
                                            placeholder="0.00"
                                            class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -474,8 +590,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-semibold">Vehicle List</h3>
                         <div class="flex space-x-2">
-                            <input type="search" id="vehicleSearch" placeholder="Search vehicles..." 
-                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <form action="" method="GET" class="search-form">
+                                <input type="hidden" name="tab" value="vehicle-list">
+                                <div class="relative">
+                                    <input type="text" name="search" id="vehicleSearch" placeholder="Search vehicles..." 
+                                        value="<?= isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '' ?>"
+                                        class="px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <button type="submit" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-500">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </form>
+                            <?php if(isset($_GET['search']) && !empty($_GET['search'])): ?>
+                            <a href="?tab=vehicle-list" class="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Clear
+                            </a>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -493,13 +628,70 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
 
                         <!-- Vehicle Entries from Database -->
-                        <div class="divide-y divide-gray-200">
+                        <div class="divide-y divide-gray-200" id="vehicleListContainer">
                             <?php
-                            $query = "SELECT * FROM vehicle";
-                            $result = mysqli_query($conn, $query);
+                            // Pagination settings
+                            $items_per_page = 5;
+                            $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+                            if ($page < 1) $page = 1;
+                            $offset = ($page - 1) * $items_per_page;
+                            
+                            // Search functionality
+                            $search_condition = "";
+                            $search_params = [];
+                            
+                            if (isset($_GET['search']) && !empty($_GET['search'])) {
+                                $search = $_GET['search'];
+                                $search_condition = " WHERE 
+                                    VEHICLE_BRAND LIKE ? OR 
+                                    MODEL LIKE ? OR 
+                                    VEHICLE_TYPE LIKE ? OR 
+                                    LICENSE_PLATE LIKE ? OR 
+                                    COLOR LIKE ? OR
+                                    YEAR LIKE ? OR
+                                    STATUS LIKE ?";
+                                $search_param = "%{$search}%";
+                                $search_params = array_fill(0, 7, $search_param);
+                            }
+                            
+                            // Get total number of records for pagination with search
+                            $count_query = "SELECT COUNT(*) as total FROM vehicle" . $search_condition;
+                            $stmt = $conn->prepare($count_query);
+                            
+                            if (!empty($search_params)) {
+                                $stmt->bind_param(str_repeat('s', count($search_params)), ...$search_params);
+                            }
+                            
+                            $stmt->execute();
+                            $count_result = $stmt->get_result();
+                            $count_row = $count_result->fetch_assoc();
+                            $total_items = $count_row['total'];
+                            $total_pages = ceil($total_items / $items_per_page);
+                            
+                            // Adjust page if it's out of range
+                            if ($page > $total_pages && $total_pages > 0) {
+                                $page = $total_pages;
+                                $offset = ($page - 1) * $items_per_page;
+                            }
+                            
+                            // Get vehicles with pagination and search
+                            $query = "SELECT * FROM vehicle" . $search_condition . " LIMIT ?, ?";
+                            $stmt = $conn->prepare($query);
+                            
+                            if (!empty($search_params)) {
+                                $params = $search_params;
+                                $params[] = $offset;
+                                $params[] = $items_per_page;
+                                $stmt->bind_param(str_repeat('s', count($search_params)) . 'ii', ...$params);
+                            } else {
+                                $stmt->bind_param('ii', $offset, $items_per_page);
+                            }
+                            
+                            $stmt->execute();
+                            $result = $stmt->get_result();
 
                             if ($result && mysqli_num_rows($result) > 0):
-                                while ($row = mysqli_fetch_assoc($result)): 
+                                while ($row = $result->fetch_assoc()): 
                                     $statusClass = match(strtolower($row['STATUS'])) {
                                         'available' => 'bg-green-100 text-green-800',
                                         'rented' => 'bg-blue-100 text-blue-800',
@@ -548,14 +740,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </a>
-                                        <button onclick="deleteVehicle(<?= $row['VEHICLE_ID'] ?>)" 
-                                                class="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                                                title="Delete Vehicle">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
                                     </div>
                                 </div>
                             <?php 
@@ -563,9 +747,96 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             else: 
                             ?>
                                 <div class="p-4 text-center text-gray-500">
-                                    No vehicles found
+                                    <?= isset($_GET['search']) ? "No vehicles found matching '" . htmlspecialchars($_GET['search']) . "'" : "No vehicles found" ?>
                                 </div>
                             <?php endif; ?>
+                        </div>
+                        
+                        <!-- Pagination Controls -->
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Showing <span class="font-medium"><?php echo min(($page - 1) * $items_per_page + 1, $total_items); ?></span> 
+                                        to <span class="font-medium"><?php echo min($page * $items_per_page, $total_items); ?></span> 
+                                        of <span class="font-medium"><?php echo $total_items; ?></span> vehicles
+                                        <?php echo isset($_GET['search']) ? " matching '" . htmlspecialchars($_GET['search']) . "'" : ""; ?>
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <!-- Previous Page Button -->
+                                        <?php if ($page > 1): ?>
+                                            <a href="?tab=vehicle-list&page=<?php echo ($page - 1) . $search_param; ?>" 
+                                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Previous</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                                <span class="sr-only">Previous</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </span>
+                                        <?php endif; ?>
+
+                                        <!-- Page Numbers -->
+                                        <?php 
+                                        $start_page = max(1, min($page - 2, $total_pages - 4));
+                                        $end_page = min($total_pages, $start_page + 4);
+                                        
+                                        if ($start_page > 1): ?>
+                                            <a href="?tab=vehicle-list&page=1<?php echo $search_param; ?>" 
+                                               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                1
+                                            </a>
+                                            <?php if ($start_page > 2): ?>
+                                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                                            <?php endif;
+                                        endif;
+
+                                        for ($i = $start_page; $i <= $end_page; $i++): 
+                                            $is_current = $i == $page;
+                                        ?>
+                                            <a href="?tab=vehicle-list&page=<?php echo $i . $search_param; ?>" 
+                                               class="relative inline-flex items-center px-4 py-2 border <?php echo $is_current ? 'bg-blue-50 border-blue-500 text-blue-600 z-10' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'; ?> text-sm font-medium">
+                                                <?php echo $i; ?>
+                                            </a>
+                                        <?php endfor;
+
+                                        if ($end_page < $total_pages): 
+                                            if ($end_page < $total_pages - 1): ?>
+                                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                                            <?php endif; ?>
+                                            <a href="?tab=vehicle-list&page=<?php echo $total_pages . $search_param; ?>" 
+                                               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                <?php echo $total_pages; ?>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <!-- Next Page Button -->
+                                        <?php if ($page < $total_pages): ?>
+                                            <a href="?tab=vehicle-list&page=<?php echo ($page + 1) . $search_param; ?>" 
+                                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Next</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                                <span class="sr-only">Next</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </span>
+                                        <?php endif; ?>
+                                    </nav>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -578,6 +849,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Tab functionality
         const tabButtons = document.querySelectorAll('[role="tab"]');
         const tabPanels = document.querySelectorAll('[role="tabpanel"]');
+
+        // Check URL parameters for tab switching on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            // If there's a tab parameter, activate that tab
+            if (tabParam) {
+                const tabToActivate = document.getElementById(`${tabParam}-tab`);
+                if (tabToActivate) {
+                    tabToActivate.click();
+                }
+            }
+        });
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -689,46 +975,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
 
-        function deleteVehicle(vehicleId) {
-            Swal.fire({
-                title: 'Are you sure?',
-                text: "You won't be able to revert this!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('delete_vehicle.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'vehicle_id=' + vehicleId
-                    })
-                    .then(response => response.text())
-                    .then(result => {
-                        if(result === 'success') {
-                            Swal.fire(
-                                'Deleted!',
-                                'Vehicle has been deleted.',
-                                'success'
-                            ).then(() => {
-                                location.reload();
-                            });
-                        } else {
-                            Swal.fire(
-                                'Error!',
-                                'Failed to delete vehicle.',
-                                'error'
-                            );
-                        }
-                    });
-                }
-            });
-        }
-
         // Add search functionality
         document.getElementById('vehicleSearch').addEventListener('keyup', function() {
             const searchText = this.value.toLowerCase();
@@ -740,14 +986,439 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             });
         });
 
-        // Add this after your existing script
+        // Add event listeners and validation for form
         document.addEventListener('DOMContentLoaded', function() {
+            // Define vehicle brand and model structure - organized by vehicle type
+            const vehicleTypeBrandsModels = {
+                'SUV': {
+                    'GREELY': ['COOLRAY', 'OKAVANGO'],
+                    'TOYOTA': ['RAIZE', 'RUSH'],
+                    'CHERY': ['TIGGO 2 PRO']
+                },
+                'HATCHBACK': {
+                    'HONDA': ['BRIO'],
+                    'MAZDA': ['MAZDA2'],
+                    'MITSUBISHI': ['MIRAGE'],
+                    'SUZUKI': ['CELERIO', 'SWIFT'],
+                    'TOYOTA': ['WIGO']
+                },
+                'SEDAN': {
+                    'HONDA': ['CITY'],
+                    'HYUNDAI': ['ACCENT'],
+                    'KIA': ['SOLUTO'],
+                    'MG': ['MG5'],
+                    'TOYOTA': ['VIOS'],
+                    'NISSAN': ['ALMERA']
+                },
+                'MPV': {
+                    'BAIC': ['M5OS'],
+                    'FOTON': ['GRATOUR'],
+                    'HONDA': ['BR-V'],
+                    'HYUNDAI': ['STARGAZER'],
+                    'KIA': ['CARNIVAL'],
+                    'MAXUS': ['G50'],
+                    'NISSAN': ['LIVINA'],
+                    'SUZUKI': ['ERTIGA'],
+                    'TOYOTA': ['AVANZA', 'INNOVA']
+                },
+                'VAN': {
+                    'HYUNDAI': ['H350'],
+                    'FORD': ['TRANSIT'],
+                    'ISUZU': ['TRAVIZ'],
+                    'JMC': ['TRANSPORTER'],
+                    'MAXUS': ['V80'],
+                    'NISSAN': ['NV350 URVAN'],
+                    'TOYOTA': ['HIACE COMMUTER', 'HIACE GL']
+                },
+                'MINIBUS': {
+                    'FOTON': ['TOANO', 'TRAVELLER'],
+                    'HYUNDAI': ['COUNTRY'],
+                    'KING LONG': ['UNIVAN'],
+                    'TOYOTA': ['COASTER']
+                }
+            };
+            
+            // Extract just the brands for each vehicle type for the first dropdown
+            const vehicleBrands = {};
+            for (const type in vehicleTypeBrandsModels) {
+                vehicleBrands[type] = Object.keys(vehicleTypeBrandsModels[type]);
+            }
+            
+            const vehicleTypeSelect = document.getElementById('vehicleTypeSelect');
+            const brandSelect = document.getElementById('brandSelect');
+            const modelSelect = document.getElementById('modelSelect');
+            
+            let currentVehicleType = '';
+            
+            // Make sure elements exist before adding event listeners
+            if (vehicleTypeSelect && brandSelect && modelSelect) {
+                // Update brand options when vehicle type changes
+                vehicleTypeSelect.addEventListener('change', function() {
+                    const selectedType = this.value;
+                    currentVehicleType = selectedType;
+                    
+                    // Clear existing options
+                    brandSelect.innerHTML = '';
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.disabled = true;
+                    defaultOption.selected = true;
+                    defaultOption.textContent = 'Select Brand';
+                    brandSelect.appendChild(defaultOption);
+                    
+                    // Also reset model dropdown
+                    modelSelect.innerHTML = '';
+                    const modelDefaultOption = document.createElement('option');
+                    modelDefaultOption.value = '';
+                    modelDefaultOption.disabled = true;
+                    modelDefaultOption.selected = true;
+                    modelDefaultOption.textContent = 'Select Brand First';
+                    modelSelect.appendChild(modelDefaultOption);
+                    modelSelect.disabled = true;
+                    
+                    // Add new options based on selected vehicle type
+                    if (selectedType && vehicleBrands[selectedType]) {
+                        vehicleBrands[selectedType].forEach(brand => {
+                            const option = document.createElement('option');
+                            option.value = brand;
+                            option.textContent = brand;
+                            brandSelect.appendChild(option);
+                        });
+                        
+                        // Enable the brand select
+                        brandSelect.disabled = false;
+                    } else {
+                        // If no type is selected, disable the brand select
+                        brandSelect.disabled = true;
+                    }
+                });
+                
+                // Update model options when brand changes
+                brandSelect.addEventListener('change', function() {
+                    const selectedBrand = this.value;
+                    
+                    // Clear existing options
+                    modelSelect.innerHTML = '';
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.disabled = true;
+                    defaultOption.selected = true;
+                    defaultOption.textContent = 'Select Model';
+                    modelSelect.appendChild(defaultOption);
+                    
+                    // Add new options based on selected brand
+                    if (selectedBrand && currentVehicleType && vehicleTypeBrandsModels[currentVehicleType][selectedBrand]) {
+                        vehicleTypeBrandsModels[currentVehicleType][selectedBrand].forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            modelSelect.appendChild(option);
+                        });
+                        
+                        // Enable the model select
+                        modelSelect.disabled = false;
+                    } else {
+                        // If no brand is selected, disable the model select
+                        modelSelect.disabled = true;
+                    }
+                });
+                
+                // Trigger change event if a value is already selected (for page reloads)
+                if (vehicleTypeSelect.value) {
+                    vehicleTypeSelect.dispatchEvent(new Event('change'));
+                    
+                    if (brandSelect.value) {
+                        brandSelect.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+            
+            // Get form and form controls
             const form = document.getElementById('addVehicleForm');
-            const brandInput = form.querySelector('input[name="VEHICLE_BRAND"]');
-            const modelInput = form.querySelector('input[name="MODEL"]');
-            const colorInput = form.querySelector('input[name="COLOR"]');
-            const yearInput = form.querySelector('input[name="YEAR"]');
             const amountInput = form.querySelector('input[name="AMOUNT"]');
+            const colorSelect = form.querySelector('select[name="COLOR"]');
+            const yearField = document.getElementById('yearField'); // Hidden year field
+            
+            // Initialize year dropdown
+            function initYearDropdown() {
+                const yearDropdownButton = document.getElementById('yearDropdownButton');
+                const yearDropdownList = document.getElementById('yearDropdownList');
+                const yearOptions = document.getElementById('yearOptions');
+                const yearDisplay = document.getElementById('yearDisplay');
+                const yearField = document.getElementById('yearField');
+                
+                // Generate years from 1990 to current year + 1
+                const currentYear = new Date().getFullYear();
+                const startYear = 1990;
+                
+                // Clear existing options
+                yearOptions.innerHTML = '';
+                
+                // Group years by decades for better organization
+                function addYearCategory(label) {
+                    const category = document.createElement('div');
+                    category.className = 'year-category';
+                    category.textContent = label;
+                    yearOptions.appendChild(category);
+                }
+                
+                // Add current and next year separately at the top
+                addYearCategory('Recent Years');
+                
+                // Current year and next year
+                [currentYear + 1, currentYear].forEach(year => {
+                    const option = document.createElement('div');
+                    option.className = 'year-option';
+                    option.textContent = year;
+                    option.dataset.value = year;
+                    
+                    option.addEventListener('click', () => {
+                        // Update hidden field and display
+                        yearField.value = year;
+                        yearDisplay.textContent = year;
+                        
+                        // Update selected status
+                        const allOptions = yearOptions.querySelectorAll('.year-option');
+                        allOptions.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                        
+                        // Close dropdown
+                        yearDropdownList.classList.remove('active');
+                        yearDropdownList.classList.add('hidden');
+                    });
+                    
+                    yearOptions.appendChild(option);
+                });
+                
+                // Add 2020s decade separately to ensure all years in current decade are shown
+                addYearCategory('2020s');
+                
+                // Create current decade years individually (2020-2029)
+                const currentDecadeStart = Math.floor(currentYear / 10) * 10;
+                
+                // Start from the year before current year and go down to the decade start
+                for (let year = currentYear - 1; year >= currentDecadeStart; year--) {
+                    const option = document.createElement('div');
+                    option.className = 'year-option';
+                    option.textContent = year;
+                    option.dataset.value = year;
+                    
+                    option.addEventListener('click', () => {
+                        yearField.value = year;
+                        yearDisplay.textContent = year;
+                        
+                        const allOptions = yearOptions.querySelectorAll('.year-option');
+                        allOptions.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                        
+                        yearDropdownList.classList.remove('active');
+                        yearDropdownList.classList.add('hidden');
+                    });
+                    
+                    yearOptions.appendChild(option);
+                }
+                
+                // Add older decades (2010s, 2000s, 1990s)
+                const oldDecades = [2010, 2000, 1990];
+                
+                oldDecades.forEach(decadeStart => {
+                    const decadeEnd = decadeStart + 9;
+                    addYearCategory(`${decadeStart}s`);
+                    
+                    // Add all years in the decade, in reverse order (newest first)
+                    for (let year = decadeEnd; year >= decadeStart; year--) {
+                        const option = document.createElement('div');
+                        option.className = 'year-option';
+                        option.textContent = year;
+                        option.dataset.value = year;
+                        
+                        option.addEventListener('click', () => {
+                            yearField.value = year;
+                            yearDisplay.textContent = year;
+                            
+                            const allOptions = yearOptions.querySelectorAll('.year-option');
+                            allOptions.forEach(opt => opt.classList.remove('selected'));
+                            option.classList.add('selected');
+                            
+                            yearDropdownList.classList.remove('active');
+                            yearDropdownList.classList.add('hidden');
+                        });
+                        
+                        yearOptions.appendChild(option);
+                    }
+                });
+                
+                // Initially hide the dropdown
+                yearDropdownList.classList.add('hidden');
+                
+                // Toggle dropdown
+                yearDropdownButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    yearDropdownList.classList.toggle('active');
+                    yearDropdownList.classList.toggle('hidden');
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!yearDropdownButton.contains(e.target) && !yearDropdownList.contains(e.target)) {
+                        yearDropdownList.classList.remove('active');
+                        yearDropdownList.classList.add('hidden');
+                    }
+                });
+                
+                // Do NOT set a default year value, leave it blank until user selects
+                yearDisplay.textContent = "Select Year";
+                yearField.value = "";
+            }
+            
+            // Initialize year dropdown
+            initYearDropdown();
+
+            // Excel-like color picker functionality
+            function initColorPicker() {
+                const colorDisplay = document.getElementById('colorDisplay');
+                const colorPalette = document.getElementById('colorPalette');
+                const colorGrid = document.getElementById('colorGrid');
+                const selectedColorSwatch = document.getElementById('selectedColorSwatch');
+                const selectedColorText = document.getElementById('selectedColorText');
+                const closeColorPalette = document.getElementById('closeColorPalette');
+                
+                // Get all color options from the hidden select
+                const colorOptions = [];
+                Array.from(colorSelect.options).forEach(option => {
+                    if (option.value && option.dataset.color) {
+                        colorOptions.push({
+                            name: option.value,
+                            hex: option.dataset.color
+                        });
+                    }
+                });
+                
+                // Build color grid
+                colorOptions.forEach(color => {
+                    const colorCell = document.createElement('div');
+                    colorCell.className = 'color-cell';
+                    colorCell.style.backgroundColor = color.hex;
+                    colorCell.dataset.colorName = color.name;
+                    colorCell.dataset.colorHex = color.hex;
+                    
+                    // Add white border for white color to make it visible
+                    if (color.name === 'White') {
+                        colorCell.style.border = '1px solid #e5e7eb';
+                    }
+                    
+                    // Create tooltip with color name
+                    const colorName = document.createElement('span');
+                    colorName.className = 'color-name';
+                    colorName.textContent = color.name;
+                    colorCell.appendChild(colorName);
+                    
+                    // Handle color selection
+                    colorCell.addEventListener('click', () => {
+                        // Update the hidden select value
+                        colorSelect.value = color.name;
+                        
+                        // Update the display
+                        selectedColorSwatch.style.backgroundColor = color.hex;
+                        if (color.name === 'White') {
+                            selectedColorSwatch.style.border = '1px solid #e5e7eb';
+                        } else {
+                            selectedColorSwatch.style.border = '1px solid rgba(0,0,0,0.1)';
+                        }
+                        
+                        selectedColorText.textContent = color.name;
+                        
+                        // Visual feedback for selection
+                        const allCells = colorGrid.querySelectorAll('.color-cell');
+                        allCells.forEach(cell => cell.classList.remove('selected'));
+                        colorCell.classList.add('selected');
+                        
+                        // Add animation effect
+                        selectedColorSwatch.classList.add('scale-110');
+                        setTimeout(() => {
+                            selectedColorSwatch.classList.remove('scale-110');
+                        }, 200);
+                        
+                        // Hide palette with small delay for visual feedback
+                        setTimeout(() => {
+                            colorPalette.classList.add('hidden');
+                        }, 250);
+                        
+                        // Trigger change event on select
+                        const event = new Event('change');
+                        colorSelect.dispatchEvent(event);
+                    });
+                    
+                    colorGrid.appendChild(colorCell);
+                });
+                
+                // Toggle color palette visibility
+                colorDisplay.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isHidden = colorPalette.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        // Position the palette correctly
+                        const rect = colorDisplay.getBoundingClientRect();
+                        if (window.innerHeight - rect.bottom < 300) {
+                            // If not enough space below, show above
+                            colorPalette.style.bottom = colorDisplay.offsetHeight + 'px';
+                            colorPalette.style.top = 'auto';
+                        } else {
+                            colorPalette.style.top = colorDisplay.offsetHeight + 8 + 'px';
+                            colorPalette.style.bottom = 'auto';
+                        }
+                    }
+                    
+                    colorPalette.classList.toggle('hidden');
+                });
+                
+                // Close palette when clicking the close button
+                closeColorPalette.addEventListener('click', () => {
+                    colorPalette.classList.add('hidden');
+                });
+                
+                // Close palette when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!colorDisplay.contains(e.target) && !colorPalette.contains(e.target)) {
+                        colorPalette.classList.add('hidden');
+                    }
+                });
+                
+                // Handle keyboard navigation and accessibility
+                colorDisplay.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        colorPalette.classList.toggle('hidden');
+                    }
+                });
+                
+                // Make the color picker accessible
+                colorDisplay.setAttribute('tabindex', '0');
+                colorDisplay.setAttribute('role', 'combobox');
+                colorDisplay.setAttribute('aria-expanded', 'false');
+                colorDisplay.setAttribute('aria-haspopup', 'listbox');
+                
+                // Update ARIA states when opening/closing the palette
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.attributeName === 'class') {
+                            const isHidden = colorPalette.classList.contains('hidden');
+                            colorDisplay.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                        }
+                    });
+                });
+                
+                observer.observe(colorPalette, { attributes: true });
+            }
+            
+            // Initialize improved color picker
+            initColorPicker();
 
             function preventSpecialCharsAndNumbers(e) {
                 if (!/^[A-Za-z\s]$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
@@ -781,10 +1452,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Add event listeners for keypress
             brandInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
-            modelInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
-            colorInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
-            yearInput.addEventListener('keypress', preventNonNumbers);
-
+            // We're using select elements for brand and model, so no need for keypress event listeners
             // Add amount validation
             amountInput.addEventListener('input', function(e) {
                 if (this.value < 0) {
@@ -802,16 +1470,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             });
 
             // Form validation before submit
+            // Pattern for text validation
+            const pattern = /^[A-Za-z\s]+$/;
+            const yearPattern = /^[0-9]{4}$/;
+            const currentYear = new Date().getFullYear();
+            
             form.addEventListener('submit', function(e) {
-                const brandValue = brandInput.value;
-                const modelValue = modelInput.value;
-                const colorValue = colorInput.value;
-                const yearValue = yearInput.value;
+                const brandValue = brandSelect.value;
+                const modelValue = modelSelect.value;
+                const yearValue = document.getElementById('yearField').value;
                 const amountValue = parseFloat(amountInput.value);
-
-                const pattern = /^[A-Za-z\s]+$/;
-                const yearPattern = /^[0-9]{4}$/;
-                const currentYear = new Date().getFullYear();
+                const colorValue = colorSelect.value;
 
                 if (!pattern.test(brandValue)) {
                     e.preventDefault();
@@ -833,27 +1502,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     return;
                 }
 
-                if (!pattern.test(colorValue)) {
+                if (!colorValue) {
                     e.preventDefault();
                     Swal.fire({
                         icon: 'error',
-                        title: 'Invalid Input',
-                        text: 'Color can only contain letters and spaces'
+                        title: 'Missing Information',
+                        text: 'Please select a color'
                     });
                     return;
                 }
 
-                if (!yearPattern.test(yearValue)) {
+                if (!yearValue) {
                     e.preventDefault();
                     Swal.fire({
                         icon: 'error',
-                        title: 'Invalid Input',
-                        text: 'Year must be a 4-digit number'
+                        title: 'Missing Information',
+                        text: 'Please select a year'
                     });
                     return;
                 }
 
-                if (yearValue < 1900 || yearValue > currentYear + 1) {
+                if (!yearPattern.test(yearValue) || yearValue < 1900 || yearValue > currentYear + 1) {
                     e.preventDefault();
                     Swal.fire({
                         icon: 'error',
@@ -873,8 +1542,129 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     return;
                 }
             });
+
+            // Skip redefining variables and directly update the event listener
+            // These variables are already defined earlier in the code
+            
+            // Update brand options when vehicle type changes
+            vehicleTypeSelect.addEventListener('change', function() {
+                const selectedType = this.value;
+                
+                // Clear existing options except the first one
+                brandSelect.innerHTML = '<option value="" disabled selected>Select Brand</option>';
+                
+                // Add new options based on selected vehicle type
+                if (selectedType && vehicleBrands[selectedType]) {
+                    vehicleBrands[selectedType].forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand;
+                        option.textContent = brand;
+                        brandSelect.appendChild(option);
+                    });
+                    
+                    // Enable the brand select
+                    brandSelect.disabled = false;
+                } else {
+                    // If no type is selected, disable the brand select
+                    brandSelect.disabled = true;
+                }
+            });
+        });
+
+        // Update search functionality to work with pagination
+        document.getElementById('vehicleSearch').addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            
+            // If search text is empty, reload the page to restore pagination
+            if (searchText.trim() === '') {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('tab', 'vehicle-list');
+                if (currentUrl.searchParams.has('search')) {
+                    currentUrl.searchParams.delete('search');
+                }
+                window.location.href = currentUrl.toString();
+                return;
+            }
+            
+            // Get all vehicle rows
+            const vehicleEntries = document.querySelectorAll('#vehicleListContainer > div');
+            let hasResults = false;
+            
+            vehicleEntries.forEach(entry => {
+                if (entry.className.includes('grid')) { // Only target actual vehicle rows
+                    const text = entry.textContent.toLowerCase();
+                    if (text.includes(searchText)) {
+                        entry.style.display = '';
+                        hasResults = true;
+                    } else {
+                        entry.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Show or hide the "No vehicles found" message
+            const noResultsMsg = document.querySelector('#vehicleListContainer > .p-4.text-center');
+            if (noResultsMsg) {
+                noResultsMsg.style.display = hasResults ? 'none' : 'block';
+            }
+            
+            // Hide pagination when searching
+            const pagination = document.querySelector('.px-4.py-3.bg-gray-50.border-t');
+            if (pagination) {
+                pagination.style.display = hasResults ? '' : 'none';
+            }
+        });
+
+        // Update tab functionality to preserve page number when switching tabs
+        function handleTabChange(tabId) {
+            // Hide all tab panels
+            tabPanels.forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            // Deactivate all tab buttons
+            tabButtons.forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-blue-600');
+                btn.classList.add('border-transparent');
+                btn.setAttribute('aria-selected', 'false');
+            });
+            
+            // Activate the clicked tab
+            const activeTab = document.getElementById(tabId);
+            activeTab.classList.add('text-blue-600', 'border-blue-600');
+            activeTab.classList.remove('border-transparent');
+            activeTab.setAttribute('aria-selected', 'true');
+            
+            // Show corresponding tab panel
+            const panelId = activeTab.getAttribute('data-tabs-target').substring(1);
+            document.getElementById(panelId).classList.remove('hidden');
+            
+            // Update URL with tab parameter but keep page parameter if exists
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('tab', panelId);
+            const newUrl = window.location.pathname + '?' + urlParams.toString();
+            history.pushState({path: newUrl}, '', newUrl);
+        }
+
+        // Update the tab click event listeners
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                handleTabChange(button.id);
+            });
+        });
+
+        // Check URL parameters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam) {
+                const tabToActivate = document.getElementById(`${tabParam}-tab`);
+                if (tabToActivate) {
+                    handleTabChange(tabToActivate.id);
+                }
+            }
         });
     </script>
-
 </body>
 </html>

@@ -434,9 +434,10 @@ $conn->close();
             <div class="stat-card card-purple shadow-lg p-6">
                 <div class="stat-card-inner flex flex-col md:flex-row md:items-center md:justify-between">
                     <div class="stat-icon text-white">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <!-- Replaced complex SVG with a simpler approach - using text for the peso sign -->
+                        <div class="flex items-center justify-center text-xl font-bold">
+                            <span class="text-2xl">₱</span>
+                        </div>
                     </div>
                     <div class="mt-4 md:mt-0 md:text-right">
                         <div class="stat-value">₱<?php echo $formatted_revenue; ?></div>

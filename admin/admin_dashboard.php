@@ -151,7 +151,8 @@ $staff_count_result = $conn->query($staff_count_query);
 $total_staff = $staff_count_result->fetch_assoc()['total'];
 $total_staff_pages = ceil($total_staff / $items_per_page);
 
-$staff_query = "SELECT STAFF_ID, FIRST_NAME, LAST_NAME, PHONE_NUM FROM staff 
+// Update the query to use USER_NAME and PASSWORD (correct column names from the database)
+$staff_query = "SELECT STAFF_ID, FIRST_NAME, LAST_NAME, PHONE_NUM, ADDRESS, USER_NAME, PASSWORD FROM staff 
                ORDER BY LAST_NAME, FIRST_NAME 
                LIMIT $staff_offset, $items_per_page";
 $staff_result = $conn->query($staff_query);
@@ -402,6 +403,12 @@ $conn->close();
                             </a>
                         </li>
                         <li>
+                            <a href="reports.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="../logout.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-red-600 font-medium transition-all duration-200 flex items-center space-x-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -471,9 +478,10 @@ $conn->close();
             <div class="stat-card card-purple shadow-lg p-6">
                 <div class="stat-card-inner flex flex-col md:flex-row md:items-center md:justify-between">
                     <div class="stat-icon text-white">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <!-- Replaced complex SVG with a simpler approach - using text for the peso sign -->
+                        <div class="flex items-center justify-center text-xl font-bold">
+                            <span class="text-2xl">₱</span>
+                        </div>
                     </div>
                     <div class="mt-4 md:mt-0 md:text-right">
                         <div class="stat-value">₱<?php echo $formatted_revenue; ?></div>
@@ -745,8 +753,7 @@ $conn->close();
                                                 </div>
                                                 <div class="ml-4">
                                                     <div class="text-sm font-medium text-gray-900"><?php echo $driver['DRIVER_NAME']; ?></div>
-                                                </div>
-                                            </td>
+                                                </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                                                 <?php echo $driver['LICENSE_NUMBER']; ?>
@@ -1019,9 +1026,11 @@ $conn->close();
                     <table class="w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff Name</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Number</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
@@ -1029,11 +1038,6 @@ $conn->close();
                             <?php if(count($staff_members) > 0): ?>
                                 <?php foreach($staff_members as $staff): ?>
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-medium">
-                                                #<?php echo $staff['STAFF_ID']; ?>
-                                            </span>
-                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
                                                 <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-semibold">
@@ -1053,6 +1057,31 @@ $conn->close();
                                                 <?php echo $staff['PHONE_NUM']; ?>
                                             </div>
                                         </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                                            <div class="flex items-center">
+                                                <svg class="h-4 w-4 text-gray-400 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <span class="truncate"><?php echo $staff['ADDRESS']; ?></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div class="flex items-center">
+                                                <svg class="h-4 w-4 text-gray-400 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <?php echo $staff['USER_NAME']; ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div class="flex items-center">
+                                                <svg class="h-4 w-4 text-gray-400 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                </svg>
+                                                <span class="font-mono"><?php echo $staff['PASSWORD']; ?></span>
+                                            </div>
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             <button class="inline-flex items-center justify-center rounded-full bg-purple-100 hover:bg-purple-200 h-8 w-8 transition-colors" title="View Details">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1065,7 +1094,7 @@ $conn->close();
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="4" class="px-6 py-8 text-sm text-center text-gray-500">
+                                    <td colspan="6" class="px-6 py-8 text-sm text-center text-gray-500">
                                         <div class="flex flex-col items-center justify-center">
                                             <svg class="h-10 w-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

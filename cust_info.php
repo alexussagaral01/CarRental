@@ -84,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
             mysqli_stmt_close($stmt);
 
             // Insert payment information
-            $paymentStmt = mysqli_prepare($conn, "INSERT INTO payment (PAYMENT_METHOD) VALUES (?)");
+            $paymentStmt = mysqli_prepare($conn, "INSERT INTO payment (PAYMENT_METHOD, STATUS) VALUES (?, 'Paid')");
             mysqli_stmt_bind_param($paymentStmt, "s", $paymentMethod);
             $paymentResult = mysqli_stmt_execute($paymentStmt);
             $paymentId = mysqli_insert_id($conn);
@@ -243,8 +243,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
     </script>
 </head>
 <body class="bg-gray-50">
-    <!-- Modern Header Section -->
-    <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 fixed w-full top-0 z-50">
+     <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 fixed w-full top-0 z-50">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-20">
                 <!-- Logo Section -->
@@ -263,69 +262,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
                     </div>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="hidden md:block">
-                    <ul class="flex space-x-1">
-                        <li>
-                            <a href="dashboard.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="rent.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Rent</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                <span>Notifications</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="details.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>About</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-
-                <!-- Search and Profile Section -->
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <input type="text" placeholder="Search vehicles..." class="w-64 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
-                        <button class="absolute right-3 top-2.5 text-gray-400 hover:text-blue-600 transition-colors duration-200">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </button>
-                    </div>
+                <!-- Navigation - Centered -->
+                <div class="flex-1 flex justify-center">
+                    <nav class="md:block">
+                        <ul class="flex space-x-8 justify-center">
+                            <li>
+                                <a href="dashboard.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                                    <span>Home</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="rent.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Rent</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="details.php" class="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 font-medium transition-all duration-200 flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>About</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
+                
+                <!-- Empty div for spacing balance -->
+                <div class="w-40"></div>
             </div>
         </div>
     </header>
-
     <!-- Spacer for fixed header -->
     <div class="h-20"></div>
-
     <div class="max-w-4xl mx-auto my-8">
         <!-- Form Content -->
         <div class="bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-2xl p-8 border border-gray-100">
-            <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Customer Information</h2>
-                    <p class="text-gray-600 text-lg">Please fill in your details below</p>
-                </div>
-                <a href="transaction_details.php" 
-                   class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <span>View Transaction</span>
-                </a>
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Customer Information</h2>
+                <p class="text-gray-600 text-lg">Please fill in your details below</p>
             </div>
             <form class="space-y-6" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" id="customerForm">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -368,7 +343,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
                     <!-- Email -->
                     <div class="relative group">
                         <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                        <input type="email" id="email" name="email" required placeholder="Enter email address"
+                        <input type="text" 
+                            id="email" 
+                            name="email" 
+                            required 
+                            placeholder="Enter email address"
                             class="block w-full px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent hover:border-blue-400">
                     </div>
 
@@ -553,6 +532,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
             const firstNameInput = document.getElementById('firstName');
             const jobTitleInput = document.getElementById('jobTitle');
             const contactNumberInput = document.getElementById('contactNumber');
+            const emailInput = document.getElementById('email');
 
             function preventSpecialCharsAndNumbers(e) {
                 if (!/^[A-Za-z\s]$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
@@ -606,10 +586,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
             jobTitleInput.addEventListener('keypress', preventSpecialCharsAndNumbers);
             contactNumberInput.addEventListener('keypress', preventNonNumbers);
 
+            // Add email validation
+            emailInput.addEventListener('blur', function() {
+                const email = this.value.trim();
+                if (email && !email.endsWith('@gmail.com')) {
+                    this.value = email + '@gmail.com';
+                }
+            });
+
             // Form validation before submit
             form.addEventListener('submit', function(e) {
                 const namePattern = /^[A-Za-z\s]+$/;
                 const contactPattern = /^[0-9]+$/;
+                const email = emailInput.value.trim();
 
                 if (companyNameInput.value && !namePattern.test(companyNameInput.value)) {
                     e.preventDefault();
@@ -667,6 +656,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['customerType'])) {
                         icon: 'error',
                         title: 'Invalid Input',
                         text: 'Contact number must be exactly 11 digits'
+                    });
+                    return;
+                }
+
+                if (!email.endsWith('@gmail.com')) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Email',
+                        text: 'Email must end with @gmail.com'
                     });
                     return;
                 }

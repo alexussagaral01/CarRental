@@ -44,13 +44,14 @@ function displayImage($imagePath) {
     <div class="container mx-auto px-4 py-8">
         <div class="max-w-4xl mx-auto">
             <!-- Back Button -->
-            <button onclick="window.location.href='manage_vehicle.php'" 
-                    class="mb-6 inline-flex items-center px-4 py-2.5 bg-white text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 border border-gray-200 transition-all duration-200">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Back to Vehicle List
-            </button>
+            <div class="mt-8 flex justify-between">
+                <a href="manage_vehicle.php?tab=vehicle-list" class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Vehicle List
+                </a>
+            </div>
 
             <!-- Vehicle Details Card -->
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">

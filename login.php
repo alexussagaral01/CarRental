@@ -139,14 +139,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         >
                     </div>
                     
-                    <div class="flex items-center justify-between">
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" class="rounded text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-gray-600">Remember me</span>
-                        </label>
-                        <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Forgot password?</a>
-                    </div>
-                    
                     <button 
                         type="submit" 
                         class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity duration-300 transform hover:scale-[0.99]"
